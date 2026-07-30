@@ -1,0 +1,5 @@
+YawDD (Yawning Detection Dataset):
+http://www.site.uottawa.ca/~shervin/yawning/
+
+NTHU-DDD (Driver Drowsiness Detection Dataset):
+http://cv.cs.nthu.edu.tw/php/callforpaper/datasets/DDD/

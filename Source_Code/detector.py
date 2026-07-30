@@ -48,11 +48,11 @@ FACE_OVAL   = [10,338,297,332,284,251,389,356,454,323,361,288,
 EAR_OPEN        = 0.30   # eyes fully open (calibrated from user)
 EAR_CLOSED      = 0.22   # eyes closed threshold
 MAR_YAWN        = 0.65   # yawning threshold (YawDD benchmark)
-PERCLOS_LIMIT   = 0.15   # 15% eye closure in 60 frames = drowsy
+PERCLOS_LIMIT   = 0.20   # 20% eye closure in 60 frames = drowsy
 YAWN_FREQ_LIMIT = 3      # 3 yawns in 60 sec = drowsy (YawDD)
 YAWN_FRAMES     = 15     # frames mouth must be open to count as yawn
-DROWSY_FRAMES   = 20     # frames of closed eyes before DROWSY
-HARD_FRAMES     = 40     # frames before VERY_DROWSY
+DROWSY_FRAMES   = 48     # 2 seconds of closed eyes before DROWSY
+HARD_FRAMES     = 96     # 4 seconds before VERY_DROWSY
 NO_FACE_LIMIT   = 80     # frames no face before alert (~4 sec)
 
 # ─── Sound Engine ─────────────────────────────────────
@@ -66,8 +66,10 @@ def _gen_wav(path, freq=1000, dur=0.4, vol=0.7, rate=44100):
 _dir       = os.path.dirname(os.path.abspath(__file__))
 BEEP_PATH  = os.path.join(_dir, "beep.wav")
 ALARM_PATH = os.path.join(_dir, "alarm.wav")
-if not os.path.exists(BEEP_PATH):  _gen_wav(BEEP_PATH,  1000, 0.3, 0.6)
-if not os.path.exists(ALARM_PATH): _gen_wav(ALARM_PATH, 1800, 0.9, 0.9)
+AWAY_PATH  = os.path.join(_dir, "away.wav")
+if not os.path.exists(BEEP_PATH) or os.path.getsize(BEEP_PATH) > 20000:  _gen_wav(BEEP_PATH,  1000, 0.2, 0.6)
+if not os.path.exists(ALARM_PATH) or os.path.getsize(ALARM_PATH) > 50000: _gen_wav(ALARM_PATH, 1800, 0.3, 0.9)
+if not os.path.exists(AWAY_PATH) or os.path.getsize(AWAY_PATH) > 30000:  _gen_wav(AWAY_PATH,  600,  0.25, 0.7)
 
 class _Sound:
     def __init__(self):
@@ -97,6 +99,10 @@ class _Sound:
         if self._engine == 'pygame':
             try:
                 import pygame; pygame.mixer.stop()
+            except: pass
+        elif self._engine == 'winsound':
+            try:
+                import winsound; winsound.PlaySound(None, 0)
             except: pass
 
     def _run(self, path, loop):
@@ -158,6 +164,20 @@ def get_face_bbox(lm, w, h, pad=20):
     return (max(0,int(min(xs))-pad), max(0,int(min(ys))-pad),
             min(w-1,int(max(xs))+pad), min(h-1,int(max(ys))+pad))
 
+def get_head_pitch(lm, w, h):
+    # Nose tip, Chin, Left eye left, Right eye right, Left mouth, Right mouth
+    img_pts = np.array([(lm[1].x*w, lm[1].y*h), (lm[152].x*w, lm[152].y*h),
+                        (lm[33].x*w, lm[33].y*h), (lm[263].x*w, lm[263].y*h),
+                        (lm[61].x*w, lm[61].y*h), (lm[291].x*w, lm[291].y*h)], dtype="double")
+    model_pts = np.array([(0.0,0.0,0.0), (0.0,-330.0,-65.0), (-225.0,170.0,-135.0),
+                          (225.0,170.0,-135.0), (-150.0,-150.0,-125.0), (150.0,-150.0,-125.0)])
+    cam_matrix = np.array([[w, 0, w/2], [0, w, h/2], [0, 0, 1]], dtype="double")
+    success, rot_vec, trans_vec = cv2.solvePnP(model_pts, img_pts, cam_matrix, np.zeros((4,1)))
+    if success:
+        rot_mat, _ = cv2.Rodrigues(rot_vec)
+        return math.degrees(math.asin(max(-1.0, min(1.0, -rot_mat[2][0]))))
+    return 0.0
+
 # ─── Drawing Helpers ──────────────────────────────────
 def draw_rounded_rect(img, x1,y1,x2,y2, color, t=2, r=16):
     cv2.line(img,(x1+r,y1),(x2-r,y1),color,t)
@@ -196,6 +216,7 @@ STATE_COLOR = {
     'DROWSY'     : C['yellow'],
     'VERY_DROWSY': C['red'],
     'NO_FACE'    : (100,100,100),
+    'AWAY'       : (0, 100, 255),
     'CALIBRATING': C['cyan'],
 }
 
@@ -221,6 +242,7 @@ class DrowsinessDetector:
         self.yawn_counter    = 0    # current yawn frame count
         self.yawn_events     = []   # timestamps of completed yawns
         self.yawning_now     = False
+        self.pitch_smooth    = 0.0  # EMA smoothed head pitch
 
         # State
         self.frame_counter   = 0
@@ -238,6 +260,7 @@ class DrowsinessDetector:
         sound.stop()
         if   state == "DROWSY":      sound.play(BEEP_PATH,  loop=True)
         elif state == "VERY_DROWSY": sound.play(ALARM_PATH, loop=True)
+        elif state == "AWAY":        sound.play(AWAY_PATH,  loop=True)
 
     def _set_alert(self, msg):
         if self.alert_msg != msg: self.alert_count += 1
@@ -298,7 +321,7 @@ class DrowsinessDetector:
                 base_ear        = np.mean(self.calib_ear)
                 base_mar        = np.mean(self.calib_mar)
                 # Cap the threshold so unusually high baseline EARs don't cause PERCLOS to break
-                self.ear_thresh = min(0.24, max(0.17, round(base_ear - 0.055, 3)))
+                self.ear_thresh = min(0.23, max(0.16, round(base_ear - 0.080, 3)))
                 self.mar_thresh = max(0.55, round(base_mar + 0.22,  3))
                 self.calibrated = True
                 print(f"Calibrated -> EAR thresh:{self.ear_thresh}  "
@@ -306,7 +329,7 @@ class DrowsinessDetector:
                       f"(base EAR:{base_ear:.3f} MAR:{base_mar:.3f})")
 
             return frame, {
-                "state":"CALIBRATING","ear":0.0,"mar":0.0,
+                "state":"CALIBRATING","eyes":0.0,"mar":0.0,
                 "perclos":0.0,"yawn_count":0,
                 "alert_msg":"Calibrating...","alert_count":0,
                 "session_duration":int(time.time()-self.start_time)
@@ -320,20 +343,19 @@ class DrowsinessDetector:
             self.no_face_counter += 1
             self.frame_counter    = min(self.frame_counter+1, HARD_FRAMES)
 
-            if self.no_face_counter >= 30:
-                # If no face is detected, just pause and wait. Stop all alarms.
-                self.state = "NO_FACE"
-                self._clear_alert()
-                sound.stop()
-                self._last_snd = None
+            if self.no_face_counter >= 90:
+                self.state = "AWAY"
+                self._set_alert("Driver looks away or left/right!")
+                self._sound("AWAY")
                 
                 ov = frame.copy()
-                cv2.rectangle(ov,(0,0),(w,h),(30,30,30),-1)
-                cv2.addWeighted(ov,0.7,frame,0.3,0,frame)
-                cv2.putText(frame,"CAMERA PAUSED (NO FACE)",
-                    (w//2-220,h//2),cv2.FONT_HERSHEY_SIMPLEX,1.0,(180,180,180),3)
+                cv2.rectangle(ov,(0,0),(w,h),(30,30,100),-1)
+                cv2.addWeighted(ov,0.4,frame,0.6,0,frame)
+                cv2.putText(frame,"LOOK FORWARD!",
+                    (w//2-180,h//2),cv2.FONT_HERSHEY_SIMPLEX,1.5,(200,200,255),4)
             else:
                 self.state = "NO_FACE"
+                self._sound("NO_FACE")
 
             sc = STATE_COLOR.get(self.state,(100,100,100))
             cv2.putText(frame,f"STATE: {self.state}",(10,36),
@@ -343,7 +365,7 @@ class DrowsinessDetector:
                 (10,66),cv2.FONT_HERSHEY_SIMPLEX,0.46,(180,180,180),1)
 
             return frame,{
-                "state":self.state,"ear":0.0,"mar":0.0,
+                "state":self.state,"eyes":0.0,"mar":0.0,
                 "perclos":self._perclos(),"yawn_count":self._yawn_freq(),
                 "alert_msg":self.alert_msg,"alert_count":self.alert_count,
                 "session_duration":int(time.time()-self.start_time)
@@ -352,8 +374,36 @@ class DrowsinessDetector:
         # ══════════════════════════════════════════════
         # PHASE 3 — FACE DETECTED — Full YawDD analysis
         # ══════════════════════════════════════════════
-        self.no_face_counter = 0
         lm      = res.multi_face_landmarks[0].landmark
+        
+        nx = lm[1].x; lx = lm[234].x; rx = lm[454].x
+        yaw_ratio = abs(nx - lx) / (abs(rx - nx) + 1e-6)
+        
+        # 30-45 degree head turn will result in a ratio around 1.6-2.0 (or 0.6-0.4)
+        if yaw_ratio > 1.7 or yaw_ratio < 0.58:
+            self.no_face_counter += 1
+            if self.no_face_counter >= 90:
+                self.state = "AWAY"
+                self._set_alert("Driver looks away or left/right!")
+                self._sound("AWAY")
+                
+                ov = frame.copy()
+                cv2.rectangle(ov,(0,0),(w,h),(30,30,100),-1)
+                cv2.addWeighted(ov,0.4,frame,0.6,0,frame)
+                cv2.putText(frame,"LOOK FORWARD!",
+                    (w//2-180,h//2),cv2.FONT_HERSHEY_SIMPLEX,1.5,(200,200,255),4)
+                
+                sc = STATE_COLOR.get(self.state,(100,100,100))
+                cv2.putText(frame,f"STATE: {self.state}",(10,36),
+                            cv2.FONT_HERSHEY_SIMPLEX,0.88,sc,2)
+                return frame,{
+                    "state":self.state,"eyes":0.0,"mar":0.0,
+                    "perclos":self._perclos(),"yawn_count":self._yawn_freq(),
+                    "alert_msg":self.alert_msg,"alert_count":self.alert_count,
+                    "session_duration":int(time.time()-self.start_time)
+                }
+        else:
+            self.no_face_counter = max(0, self.no_face_counter - 2)
 
         ear_val = (calc_ear(lm,LEFT_EYE, w,h)+
                    calc_ear(lm,RIGHT_EYE,w,h))/2.0
@@ -382,11 +432,13 @@ class DrowsinessDetector:
         # ── Eye closure counter ───────────────────────
         eyes_closed = ear_val < self.ear_thresh
         if eyes_closed: self.frame_counter += 1
-        else:           self.frame_counter = max(0, self.frame_counter-2)
+        else:           self.frame_counter = max(0, self.frame_counter-16)
 
         # ── YawDD drowsiness classification ──────────
         # ML Model Inference
-        head_pitch = 0.0 # Placeholder since calculate_head_pitch is not defined
+        raw_pitch = get_head_pitch(lm, w, h)
+        self.pitch_smooth = 0.7 * self.pitch_smooth + 0.3 * raw_pitch
+        head_pitch = self.pitch_smooth
         ear_mar_ratio = ear_val / (mar_val + 1e-6)
         pitch_norm    = abs(head_pitch) / 35.0
         drowsy_score  = np.clip(
@@ -419,16 +471,16 @@ class DrowsinessDetector:
             self.ml_drowsy_frames += 1
         elif ml_state == 'Drowsy':
             self.ml_drowsy_frames += 1
-            self.ml_very_drowsy_frames = max(0, self.ml_very_drowsy_frames - 2)
+            self.ml_very_drowsy_frames = max(0, self.ml_very_drowsy_frames - 5)
         else:
-            self.ml_very_drowsy_frames = max(0, self.ml_very_drowsy_frames - 2)
-            self.ml_drowsy_frames = max(0, self.ml_drowsy_frames - 2)
+            self.ml_very_drowsy_frames = max(0, self.ml_very_drowsy_frames - 10)
+            self.ml_drowsy_frames = max(0, self.ml_drowsy_frames - 10)
 
-        if self.ml_very_drowsy_frames >= 15 or self.frame_counter >= 20:
+        if self.ml_very_drowsy_frames >= 30 or self.frame_counter >= HARD_FRAMES:
             self.state = 'VERY_DROWSY'
             self._set_alert("DANGER! VERY DROWSY — WAKE UP!")
             self._sound("VERY_DROWSY")
-        elif self.ml_drowsy_frames >= 15 or self.frame_counter >= 10 or yawn_freq >= 1:
+        elif self.ml_drowsy_frames >= 20 or self.frame_counter >= DROWSY_FRAMES or yawn_freq >= YAWN_FREQ_LIMIT:
             self.state = 'DROWSY'
             self._set_alert(f"Drowsy! (PERCLOS={perclos:.0%})")
             self._sound("DROWSY")
@@ -455,9 +507,9 @@ class DrowsinessDetector:
         # ── EYE boxes ─────────────────────────────────
         eye_c = C['red'] if eyes_closed else C['green']
         draw_feature_box(frame,lm,LEFT_EYE, w,h,eye_c,
-                         f"EAR:{ear_val:.2f}",pad=6)
+                         f"EYES:{ear_val:.2f}",pad=6)
         draw_feature_box(frame,lm,RIGHT_EYE,w,h,eye_c,
-                         f"EAR:{ear_val:.2f}",pad=6)
+                         f"EYES:{ear_val:.2f}",pad=6)
 
         # ── MOUTH box ─────────────────────────────────
         mouth_c = C['red'] if self.yawning_now else C['orange']
@@ -474,7 +526,7 @@ class DrowsinessDetector:
         cv2.putText(frame,f"STATE: {self.state}",(10,36),
                     cv2.FONT_HERSHEY_SIMPLEX,0.88,sc,2)
         cv2.putText(frame,
-            f"EAR:{ear_val:.3f}(th:{self.ear_thresh})  "
+            f"EYES:{ear_val:.3f}(th:{self.ear_thresh})  "
             f"MAR:{mar_val:.3f}(th:{self.mar_thresh:.2f})  "
             f"PERCLOS:{perclos:.0%}  "
             f"FC:{self.frame_counter}/{DROWSY_FRAMES}",
@@ -493,7 +545,7 @@ class DrowsinessDetector:
 
         return frame,{
             "state"           : self.state,
-            "ear"             : round(ear_val,3),
+            "eyes"            : round(ear_val,3),
             "mar"             : round(mar_val,3),
             "perclos"         : round(perclos,3),
             "yawn_count"      : yawn_freq,

@@ -31,14 +31,14 @@ DrowsyGuard/
 ├── Dataset/
 │   └── dataset_link.txt     ← YawDD + NTHU-DDD download links
 ├── Output_Images/           ← Run notebook to generate these
-│   ├── 01_ear_distribution.png
-│   ├── 02_class_distribution.png
-│   ├── 03_confusion_matrix.png
-│   ├── 04_roc_curve.png
-│   ├── 05_training_history.png
-│   ├── 06_ear_over_time.png
-│   ├── 07_feature_correlation.png
-│   └── 08_prediction_demo.png
+│   ├── 1_Class_Distribution_EDA.png
+│   ├── 2_Feature_Distributions_EDA.png
+│   ├── 3_Correlation_Heatmap_Visualization.png
+│   ├── 4_EAR_Over_Time_Visualization.png
+│   ├── 5_Accuracy_Metrics_Graph.png
+│   ├── 6_Confusion_Matrix.png
+│   ├── 7_ROC_Curves.png
+│   └── 8_Prediction_Results.png
 ├── Source_Code/
 │   ├── detector.py          ← Core YawDD-aligned detector
 │   ├── feature_extractor.py ← EAR, MAR, Head Pose functions
