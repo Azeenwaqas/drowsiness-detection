@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DrowsyGuard | Real-Time Monitor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header-card">
+            <h1 class="title-text">🚗 DrowsyGuard — Real-Time Drowsiness Monitor</h1>
+            <p class="subtitle">
+                CoderAxo AI/ML Internship &nbsp;&bull;&nbsp; CAX-OL-2026-290 &nbsp;&bull;&nbsp;
+                <strong>Muhammad Azeen Waqas</strong> &nbsp;&bull;&nbsp;
+                COMSATS University Islamabad, Wah Campus &nbsp;&bull;&nbsp;
+                <span class="highlight">YawDD Dataset Method + SVM Model</span>
+            </p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-layout">
+            <!-- Left Side: Video Feed -->
+            <section class="video-section">
+                <div class="video-container glass-card">
+                    <img id="video-feed" src="" alt="Webcam Feed Will Appear Here" class="hidden">
+                    <div id="video-placeholder" class="video-placeholder">
+                        <div class="placeholder-icon">📷</div>
+                        <p>Camera is currently off. Click Start Monitoring to begin.</p>
+                    </div>
+                </div>
+                
+                <div class="controls glass-card">
+                    <button id="btn-start" class="btn btn-primary">▶ Start Monitoring</button>
+                    <button id="btn-stop" class="btn btn-secondary">⏹ Stop</button>
+                </div>
+            </section>
+
+            <!-- Right Side: Dashboard -->
+            <section class="dashboard-section">
+                <!-- Status Badge -->
+                <div class="glass-card status-card">
+                    <h2 id="current-state" class="state-text">⚪ STOPPED</h2>
+                </div>
+
+                <!-- Alert Box -->
+                <div id="alert-box" class="alert-box alert-ok">
+                    ✅ System is ready.
+                </div>
+
+                <!-- Metrics Grid -->
+                <div class="metrics-grid">
+                    <div class="metric-card glass-card">
+                        <label>👁 EYES</label>
+                        <div id="metric-eyes" class="metric-value">0.000</div>
+                    </div>
+                    <div class="metric-card glass-card">
+                        <label>👄 MOUTH (MAR)</label>
+                        <div id="metric-mar" class="metric-value">0.000</div>
+                    </div>
+                    <div class="metric-card glass-card">
+                        <label>📊 PERCLOS</label>
+                        <div id="metric-perclos" class="metric-value">0%</div>
+                    </div>
+                    <div class="metric-card glass-card">
+                        <label>😮 Yawns/min</label>
+                        <div id="metric-yawns" class="metric-value">0</div>
+                    </div>
+                    <div class="metric-card glass-card">
+                        <label>⏱ Session</label>
+                        <div id="metric-session" class="metric-value">0s</div>
+                    </div>
+                    <div class="metric-card glass-card">
+                        <label>🤖 ML</label>
+                        <div id="metric-ml" class="metric-value">- 0%</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>

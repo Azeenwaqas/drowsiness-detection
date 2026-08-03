@@ -44,24 +44,29 @@ FACE_OVAL   = [10,338,297,332,284,251,389,356,454,323,361,288,
                172,58,132,93,234,127,162,21,54,103,67,109]
 
 # ─── Default Thresholds (will be personalized during calibration) ──
-# Based on YawDD + Soukupova 2016 research values
+# Balanced for reliable real-world detection (not too sensitive, not too slow)
 EAR_OPEN        = 0.30   # eyes fully open (calibrated from user)
 EAR_CLOSED      = 0.22   # eyes closed threshold
 MAR_YAWN        = 0.65   # yawning threshold (YawDD benchmark)
-PERCLOS_LIMIT   = 0.20   # 20% eye closure in 60 frames = drowsy
+PERCLOS_LIMIT   = 0.18   # 18% eye closure in 60 frames = drowsy (Balanced)
 YAWN_FREQ_LIMIT = 3      # 3 yawns in 60 sec = drowsy (YawDD)
-YAWN_FRAMES     = 15     # frames mouth must be open to count as yawn
-DROWSY_FRAMES   = 48     # 2 seconds of closed eyes before DROWSY
-HARD_FRAMES     = 96     # 4 seconds before VERY_DROWSY
-NO_FACE_LIMIT   = 80     # frames no face before alert (~4 sec)
+YAWN_FRAMES     = 12     # frames mouth must be open to count as yawn
+DROWSY_FRAMES   = 30     # 1 second of half-closed eyes before DROWSY
+HARD_FRAMES     = 60     # 2 seconds before VERY_DROWSY
+NO_FACE_LIMIT   = 60     # frames no face before alert (~2 sec)
 
 # ─── Sound Engine ─────────────────────────────────────
 def _gen_wav(path, freq=1000, dur=0.4, vol=0.7, rate=44100):
     with wave.open(path, 'w') as f:
         f.setnchannels(1); f.setsampwidth(2); f.setframerate(rate)
         for i in range(int(rate * dur)):
-            v = int(vol * 32767 * math.sin(2 * math.pi * freq * i / rate))
-            f.writeframes(struct.pack('<h', v))
+            t = i / rate
+            # Richer sound with harmonics and envelope
+            v = math.sin(2 * math.pi * freq * t) + 0.5 * math.sin(2 * math.pi * (freq * 1.5) * t)
+            envelope = math.exp(-4 * t / dur)
+            sample = int(vol * 15000 * v * envelope)
+            sample = max(-32768, min(32767, sample))
+            f.writeframes(struct.pack('<h', sample))
 
 _dir       = os.path.dirname(os.path.abspath(__file__))
 BEEP_PATH  = os.path.join(_dir, "beep.wav")
@@ -234,8 +239,10 @@ class DrowsinessDetector:
         self.calibrated      = False
         self.calib_ear       = []
         self.calib_mar       = []
+        self.calib_pitch     = []
         self.ear_thresh      = EAR_CLOSED
         self.mar_thresh      = MAR_YAWN
+        self.base_pitch      = 0.0
 
         # YawDD-style counters
         self.ear_history     = []   # rolling 60-frame EAR window
@@ -243,6 +250,7 @@ class DrowsinessDetector:
         self.yawn_events     = []   # timestamps of completed yawns
         self.yawning_now     = False
         self.pitch_smooth    = 0.0  # EMA smoothed head pitch
+        self.bow_counter     = 0    # frames looking down
 
         # State
         self.frame_counter   = 0
@@ -314,18 +322,22 @@ class DrowsinessDetector:
                 e  = (calc_ear(lm,LEFT_EYE, w,h)+
                       calc_ear(lm,RIGHT_EYE,w,h))/2.0
                 m  = calc_mar(lm,MOUTH_OUTER,MOUTH_INNER,w,h)
+                p  = get_head_pitch(lm, w, h)
                 self.calib_ear.append(e)
                 self.calib_mar.append(m)
+                self.calib_pitch.append(p)
 
             if n >= 60:
                 base_ear        = np.mean(self.calib_ear)
                 base_mar        = np.mean(self.calib_mar)
-                # Cap the threshold so unusually high baseline EARs don't cause PERCLOS to break
-                self.ear_thresh = min(0.23, max(0.16, round(base_ear - 0.080, 3)))
+                self.base_pitch = np.mean(self.calib_pitch) if self.calib_pitch else 0.0
+                # Sensitive threshold to trigger on half-closed eyes
+                self.ear_thresh = min(0.28, max(0.20, round(base_ear - 0.040, 3)))
                 self.mar_thresh = max(0.55, round(base_mar + 0.22,  3))
                 self.calibrated = True
                 print(f"Calibrated -> EAR thresh:{self.ear_thresh}  "
                       f"MAR thresh:{self.mar_thresh}  "
+                      f"Base Pitch:{self.base_pitch:.1f}  "
                       f"(base EAR:{base_ear:.3f} MAR:{base_mar:.3f})")
 
             return frame, {
@@ -343,7 +355,7 @@ class DrowsinessDetector:
             self.no_face_counter += 1
             self.frame_counter    = min(self.frame_counter+1, HARD_FRAMES)
 
-            if self.no_face_counter >= 90:
+            if self.no_face_counter >= NO_FACE_LIMIT:
                 self.state = "AWAY"
                 self._set_alert("Driver looks away or left/right!")
                 self._sound("AWAY")
@@ -382,7 +394,7 @@ class DrowsinessDetector:
         # 30-45 degree head turn will result in a ratio around 1.6-2.0 (or 0.6-0.4)
         if yaw_ratio > 1.7 or yaw_ratio < 0.58:
             self.no_face_counter += 1
-            if self.no_face_counter >= 90:
+            if self.no_face_counter >= NO_FACE_LIMIT:
                 self.state = "AWAY"
                 self._set_alert("Driver looks away or left/right!")
                 self._sound("AWAY")
@@ -434,9 +446,15 @@ class DrowsinessDetector:
         if eyes_closed: self.frame_counter += 1
         else:           self.frame_counter = max(0, self.frame_counter-16)
 
+        # ── Bowing head counter ───────────────────────
+        raw_pitch = get_head_pitch(lm, w, h)
+        if abs(raw_pitch - self.base_pitch) > 25.0:  # Threshold for bowing/tilting head relative to calibration
+            self.bow_counter += 1
+        else:
+            self.bow_counter = max(0, self.bow_counter - 4)
+
         # ── YawDD drowsiness classification ──────────
         # ML Model Inference
-        raw_pitch = get_head_pitch(lm, w, h)
         self.pitch_smooth = 0.7 * self.pitch_smooth + 0.3 * raw_pitch
         head_pitch = self.pitch_smooth
         ear_mar_ratio = ear_val / (mar_val + 1e-6)
@@ -476,19 +494,21 @@ class DrowsinessDetector:
             self.ml_very_drowsy_frames = max(0, self.ml_very_drowsy_frames - 10)
             self.ml_drowsy_frames = max(0, self.ml_drowsy_frames - 10)
 
-        if self.ml_very_drowsy_frames >= 30 or self.frame_counter >= HARD_FRAMES:
+        if self.ml_very_drowsy_frames >= 30 or self.frame_counter >= HARD_FRAMES or self.bow_counter >= 50:
             self.state = 'VERY_DROWSY'
-            self._set_alert("DANGER! VERY DROWSY — WAKE UP!")
+            if self.bow_counter >= 50:
+                self._set_alert("HEAD BOWED DOWN! WAKE UP!")
+            else:
+                self._set_alert("DANGER! VERY DROWSY — WAKE UP!")
             self._sound("VERY_DROWSY")
         elif self.ml_drowsy_frames >= 20 or self.frame_counter >= DROWSY_FRAMES or yawn_freq >= YAWN_FREQ_LIMIT:
             self.state = 'DROWSY'
             self._set_alert(f"Drowsy! (PERCLOS={perclos:.0%})")
             self._sound("DROWSY")
         else:
-            prev = self.state
             self.state = 'ALERT'
             self._clear_alert()
-            if prev != "ALERT": self._sound("ALERT")
+            self._sound("ALERT")
 
         sc = STATE_COLOR[self.state]
 
