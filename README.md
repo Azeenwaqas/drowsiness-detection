@@ -43,8 +43,11 @@ DrowsyGuard/
 │   ├── detector.py          ← Core YawDD-aligned detector
 │   ├── feature_extractor.py ← EAR, MAR, Head Pose functions
 │   ├── alert_engine.py      ← Audio alert engine
-│   ├── app.py               ← Streamlit dashboard
-│   └── config.yaml          ← All thresholds & settings
+│   ├── main.py              ← FastAPI backend server
+│   ├── config.yaml          ← All thresholds & settings
+│   ├── static/              ← CSS & JS files
+│   └── templates/           ← HTML frontend
+├── best_model.pkl           ← Pre-trained SVM model
 └── Demo_Video.mp4           ← Screen recording (5-10 min)
 ```
 
@@ -58,11 +61,12 @@ pip install mediapipe==0.10.9
 pip install -r requirements.txt
 ```
 
-### 2. Run Streamlit App (Webcam Detection)
+### 2. Run Web Interface (FastAPI Server)
 ```bash
 cd Source_Code
-streamlit run app.py
+python main.py
 ```
+*Then open your browser to `http://127.0.0.1:8000`*
 
 ### 3. Run Jupyter Notebook (ML Pipeline)
 ```bash
@@ -98,7 +102,7 @@ jupyter notebook Notebook.ipynb
 | Classification | SVM + YawDD rule-based engine |
 | Calibration | Personalized EAR/MAR per driver |
 | Alert System | pygame (beep + alarm) + OpenCV overlay |
-| Dashboard | Streamlit |
+| Dashboard | FastAPI, WebSockets, HTML/JS/CSS |
 
 ---
 
