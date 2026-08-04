@@ -19,7 +19,7 @@ from scipy.spatial import distance as dist
 import pickle
 
 # Load ML Model
-MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'best_model.pkl')
+MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'best_model.pkl')
 cfg_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.yaml')
 try:
     with open(MODEL_PATH, 'rb') as f:
