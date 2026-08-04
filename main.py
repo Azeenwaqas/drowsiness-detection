@@ -18,8 +18,11 @@ det = DrowsinessDetector()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global cap
-    # Use DirectShow backend on Windows (often fixes black screen issues)
-    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    import platform
+    if platform.system() == 'Windows':
+        cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    else:
+        cap = cv2.VideoCapture(0)
     yield
     if cap is not None:
         cap.release()

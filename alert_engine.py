@@ -22,7 +22,15 @@ def generate_tone(filename, freq=1000, duration=0.3, volume=0.5, rate=44100):
 
 class AlertEngine:
     def __init__(self, beep_path='beep.wav', alarm_path='alarm.wav'):
-        pygame.mixer.init()
+        try:
+            pygame.mixer.init()
+        except pygame.error:
+            # Fallback for headless cloud servers without audio cards
+            os.environ["SDL_AUDIODRIVER"] = "dummy"
+            try:
+                pygame.mixer.init()
+            except pygame.error:
+                pass # Give up on audio
         generate_tone(beep_path,  freq=1000, duration=0.3, volume=0.6)
         generate_tone(alarm_path, freq=1800, duration=0.9, volume=0.9)
         self.beep_path  = beep_path
@@ -42,7 +50,12 @@ class AlertEngine:
         pygame.mixer.stop()
 
     def _play(self, path):
-        sound = pygame.mixer.Sound(path)
-        while self.alerting:
-            sound.play()
-            pygame.time.wait(int(sound.get_length() * 1000))
+        if not pygame.mixer.get_init():
+            return
+        try:
+            sound = pygame.mixer.Sound(path)
+            while self.alerting:
+                sound.play()
+                pygame.time.wait(int(sound.get_length() * 1000))
+        except Exception:
+            pass
