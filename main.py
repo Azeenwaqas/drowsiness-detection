@@ -11,6 +11,7 @@ import uvicorn
 import numpy as np
 from contextlib import asynccontextmanager
 from detector import DrowsinessDetector
+from fastapi.middleware.cors import CORSMiddleware
 
 cap = None
 det = DrowsinessDetector()
@@ -28,6 +29,15 @@ async def lifespan(app: FastAPI):
         cap.release()
 
 app = FastAPI(title="DrowsyGuard", description="Real-Time Drowsiness Monitor Backend", lifespan=lifespan)
+
+# Add CORS Middleware for Vercel frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins (update with Vercel URL in production)
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
