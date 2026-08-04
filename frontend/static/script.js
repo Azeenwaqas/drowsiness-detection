@@ -27,20 +27,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let ws = null;
     let isMonitoring = false;
+    let localStream = null;
+    let captureInterval = null;
+    
+    // Create an invisible video element to capture the webcam feed
+    const hiddenVideo = document.createElement('video');
+    hiddenVideo.autoplay = true;
+    
+    // Create an offscreen canvas to extract frames
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 480;
+    const ctx = canvas.getContext('2d');
 
+    // Make sure to set the correct backend URL when deployed!
+    // In production, change this to your Railway app URL (e.g. wss://your-app.up.railway.app/ws)
+    const backendHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" 
+                        ? `${window.location.host}` 
+                        : "drowsiness-detection-production.up.railway.app"; // CHANGE THIS IN PRODUCTION
+    
     function connectWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
+        const wsUrl = `${protocol}//${backendHost}/ws`;
         
         ws = new WebSocket(wsUrl);
         
         ws.onopen = () => {
-            console.log('WebSocket connected');
+            console.log('WebSocket connected to', wsUrl);
         };
 
         ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            updateDashboard(data);
+            const response = JSON.parse(event.data);
+            
+            if (response.data) {
+                updateDashboard(response.data);
+            }
+            if (response.image) {
+                // Update the video feed with the processed image from the backend
+                videoFeed.src = response.image;
+            }
         };
 
         ws.onclose = () => {
@@ -80,22 +105,52 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.ml_label !== undefined) metricMl.innerText = `${data.ml_label} ${Math.round((data.confidence || 0) * 100)}%`;
     }
 
+    async function startCamera() {
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+            hiddenVideo.srcObject = localStream;
+            
+            // Start sending frames periodically
+            captureInterval = setInterval(() => {
+                if (isMonitoring && ws && ws.readyState === WebSocket.OPEN) {
+                    ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
+                    const base64Image = canvas.toDataURL('image/jpeg', 0.6); // 60% quality
+                    ws.send(JSON.stringify({ type: "frame", image: base64Image }));
+                }
+            }, 100); // 10 fps
+            
+        } catch (err) {
+            console.error("Error accessing webcam:", err);
+            alert("Could not access the webcam. Please grant permissions.");
+        }
+    }
+
+    function stopCamera() {
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+            localStream = null;
+        }
+        if (captureInterval) {
+            clearInterval(captureInterval);
+            captureInterval = null;
+        }
+    }
+
     btnStart.addEventListener('click', () => {
         if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send('start');
+            ws.send(JSON.stringify({ type: 'start' }));
         }
         
-        // Add random query param to bypass cache
-        videoFeed.src = `/video_feed?t=${new Date().getTime()}`;
         videoFeed.classList.remove('hidden');
         videoPlaceholder.classList.add('hidden');
         
         isMonitoring = true;
+        startCamera();
     });
 
     btnStop.addEventListener('click', () => {
         if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send('stop');
+            ws.send(JSON.stringify({ type: 'stop' }));
         }
         
         videoFeed.src = '';
@@ -103,6 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
         videoPlaceholder.classList.remove('hidden');
         
         isMonitoring = false;
+        stopCamera();
         
         updateDashboard({
             state: "STOPPED",
