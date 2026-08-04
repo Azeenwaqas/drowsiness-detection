@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     libxrender1 \
     && rm -rf /var/lib/apt/lists/*
 
-# cache-bust: 2026-08-04-v3
+# cache-bust: 2026-08-04-v4
 WORKDIR /app
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
