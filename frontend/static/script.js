@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const metricYawns = document.getElementById('metric-yawns');
     const metricSession = document.getElementById('metric-session');
     const metricMl = document.getElementById('metric-ml');
+    const wsStatus  = document.getElementById('ws-status');
 
     const icons = {
         "ALERT": "🟢",
@@ -54,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         ws.onopen = () => {
             console.log('WebSocket connected to', wsUrl);
+            if (wsStatus) { wsStatus.textContent = '🟢 Connected to backend'; wsStatus.className = 'ws-status connected'; }
         };
 
         ws.onmessage = (event) => {
@@ -70,6 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         ws.onclose = () => {
             console.log('WebSocket disconnected. Reconnecting...');
+            if (wsStatus) { wsStatus.textContent = '🔴 Disconnected — reconnecting…'; wsStatus.className = 'ws-status error'; }
             setTimeout(connectWebSocket, 2000);
         };
     }
@@ -83,16 +86,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update alert message
         const alertMsg = data.alert_msg || '';
         if (state === "VERY_DROWSY") {
-            alertBox.className = 'alert-box alert-danger';
+            alertBox.className = 'alert alert-danger';
             alertBox.innerHTML = `🚨 ${alertMsg}`;
         } else if (["DROWSY", "NO_FACE", "AWAY"].includes(state) && alertMsg) {
-            alertBox.className = 'alert-box alert-warn';
+            alertBox.className = 'alert alert-warn';
             alertBox.innerHTML = `⚠️ ${alertMsg}`;
         } else if (state === "STOPPED") {
-            alertBox.className = 'alert-box alert-ok';
+            alertBox.className = 'alert alert-ok';
             alertBox.innerHTML = `ℹ️ System stopped.`;
         } else {
-            alertBox.className = 'alert-box alert-ok';
+            alertBox.className = 'alert alert-ok';
             alertBox.innerHTML = `✅ Driver Alert — All Good`;
         }
 

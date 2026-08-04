@@ -3,84 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="DrowsyGuard — Real-time AI drowsiness detection for drivers using webcam and machine learning.">
     <title>DrowsyGuard | Real-Time Monitor</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="static/style.css">
 </head>
 <body>
-    <div class="app-container">
-        <!-- Header -->
-        <header class="header-card">
-            <h1 class="title-text">🚗 DrowsyGuard — Real-Time Drowsiness Monitor</h1>
+
+    <div class="page">
+
+        <!-- ── Header ──────────────────────────── -->
+        <header class="header">
+            <h1>🚗 DrowsyGuard</h1>
             <p class="subtitle">
-                CoderAxo AI/ML Internship &nbsp;&bull;&nbsp; CAX-OL-2026-290 &nbsp;&bull;&nbsp;
-                <strong>Muhammad Azeen Waqas</strong> &nbsp;&bull;&nbsp;
-                COMSATS University Islamabad, Wah Campus &nbsp;&bull;&nbsp;
-                <span class="highlight">YawDD Dataset Method + SVM Model</span>
+                CoderAxo AI/ML Internship &bull; CAX-OL-2026-290 &bull;
+                <strong>Muhammad Azeen Waqas</strong> &bull;
+                COMSATS University Islamabad, Wah Campus &bull;
+                <span class="tag">YawDD + SVM</span>
             </p>
         </header>
 
-        <!-- Main Content -->
-        <main class="main-layout">
-            <!-- Left Side: Video Feed -->
-            <section class="video-section">
-                <div class="video-container glass-card">
-                    <img id="video-feed" src="" alt="Webcam Feed Will Appear Here" class="hidden">
-                    <div id="video-placeholder" class="video-placeholder">
-                        <div class="placeholder-icon">📷</div>
-                        <p>Camera is currently off. Click Start Monitoring to begin.</p>
+        <!-- ── Main ────────────────────────────── -->
+        <main class="layout">
+
+            <!-- Left: Camera -->
+            <section class="camera-col">
+
+                <div class="video-box" id="video-box">
+                    <img id="video-feed" src="" alt="Processed webcam feed" class="hidden">
+                    <div id="video-placeholder" class="placeholder">
+                        <span class="cam-icon">📷</span>
+                        <p>Camera is off.<br>Press <strong>Start Monitoring</strong> to begin.</p>
                     </div>
                 </div>
-                
-                <div class="controls glass-card">
-                    <button id="btn-start" class="btn btn-primary">▶ Start Monitoring</button>
-                    <button id="btn-stop" class="btn btn-secondary">⏹ Stop</button>
+
+                <div class="controls">
+                    <button id="btn-start" class="btn btn-start">▶ Start Monitoring</button>
+                    <button id="btn-stop"  class="btn btn-stop">⏹ Stop</button>
                 </div>
+
+                <div id="ws-status" class="ws-status connecting">Connecting to backend…</div>
+
             </section>
 
-            <!-- Right Side: Dashboard -->
-            <section class="dashboard-section">
-                <!-- Status Badge -->
-                <div class="glass-card status-card">
-                    <h2 id="current-state" class="state-text">⚪ STOPPED</h2>
+            <!-- Right: Dashboard -->
+            <section class="dash-col">
+
+                <div class="status-card" id="status-card">
+                    <h2 id="current-state">⚪ STOPPED</h2>
                 </div>
 
-                <!-- Alert Box -->
-                <div id="alert-box" class="alert-box alert-ok">
-                    ✅ System is ready.
-                </div>
+                <div id="alert-box" class="alert alert-ok">✅ System is ready.</div>
 
-                <!-- Metrics Grid -->
                 <div class="metrics-grid">
-                    <div class="metric-card glass-card">
-                        <label>👁 EYES</label>
-                        <div id="metric-eyes" class="metric-value">0.000</div>
+                    <div class="metric">
+                        <span class="metric-label">👁 EYES (EAR)</span>
+                        <span id="metric-eyes" class="metric-val">0.000</span>
                     </div>
-                    <div class="metric-card glass-card">
-                        <label>👄 MOUTH (MAR)</label>
-                        <div id="metric-mar" class="metric-value">0.000</div>
+                    <div class="metric">
+                        <span class="metric-label">👄 MOUTH (MAR)</span>
+                        <span id="metric-mar" class="metric-val">0.000</span>
                     </div>
-                    <div class="metric-card glass-card">
-                        <label>📊 PERCLOS</label>
-                        <div id="metric-perclos" class="metric-value">0%</div>
+                    <div class="metric">
+                        <span class="metric-label">📊 PERCLOS</span>
+                        <span id="metric-perclos" class="metric-val">0%</span>
                     </div>
-                    <div class="metric-card glass-card">
-                        <label>😮 Yawns/min</label>
-                        <div id="metric-yawns" class="metric-value">0</div>
+                    <div class="metric">
+                        <span class="metric-label">😮 YAWNS/min</span>
+                        <span id="metric-yawns" class="metric-val">0</span>
                     </div>
-                    <div class="metric-card glass-card">
-                        <label>⏱ Session</label>
-                        <div id="metric-session" class="metric-value">0s</div>
+                    <div class="metric">
+                        <span class="metric-label">⏱ SESSION</span>
+                        <span id="metric-session" class="metric-val">0s</span>
                     </div>
-                    <div class="metric-card glass-card">
-                        <label>🤖 ML</label>
-                        <div id="metric-ml" class="metric-value">- 0%</div>
+                    <div class="metric">
+                        <span class="metric-label">🤖 ML MODEL</span>
+                        <span id="metric-ml" class="metric-val">- 0%</span>
                     </div>
                 </div>
+
             </section>
+
         </main>
+
     </div>
 
-    <script src="/static/script.js"></script>
+    <script src="static/script.js"></script>
 </body>
 </html>
