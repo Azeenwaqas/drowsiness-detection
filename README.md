@@ -39,16 +39,15 @@ DrowsyGuard/
 │   ├── 6_Confusion_Matrix.png
 │   ├── 7_ROC_Curves.png
 │   └── 8_Prediction_Results.png
-├── Source_Code/
-│   ├── detector.py          ← Core YawDD-aligned detector
-│   ├── feature_extractor.py ← EAR, MAR, Head Pose functions
-│   ├── alert_engine.py      ← Audio alert engine
-│   ├── main.py              ← FastAPI backend server
-│   ├── config.yaml          ← All thresholds & settings
-│   ├── static/              ← CSS & JS files
-│   └── templates/           ← HTML frontend
-├── best_model.pkl           ← Pre-trained SVM model
-└── Demo_Video.mp4           ← Screen recording (5-10 min)
+├── detector.py          ← Core YawDD-aligned detector
+├── feature_extractor.py ← EAR, MAR, Head Pose functions
+├── alert_engine.py      ← Audio alert engine
+├── main.py              ← FastAPI backend server
+├── config.yaml          ← All thresholds & settings
+├── static/              ← CSS & JS files
+├── templates/           ← HTML frontend
+├── best_model.pkl       ← Pre-trained SVM model
+└── Demo_Video.mp4       ← Screen recording (5-10 min)
 ```
 
 ---
@@ -63,7 +62,6 @@ pip install -r requirements.txt
 
 ### 2. Run Web Interface (FastAPI Server)
 ```bash
-cd Source_Code
 python main.py
 ```
 *Then open your browser to `http://127.0.0.1:8000`*
