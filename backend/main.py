@@ -75,7 +75,12 @@ async def websocket_endpoint(websocket: WebSocket):
                         "session_duration": 0, "ml_label": "-", "confidence": 0
                     }
                 })
-            elif msg.get("type") == "frame" and is_running:
+            elif msg.get("type") == "frame":
+                if not is_running:
+                    # Always reply to keep the frontend request loop alive
+                    await websocket.send_json({"error": "not_running"})
+                    continue
+                    
                 # Decode base64 frame from client
                 encoded_data = msg["image"].split(',')[1]
                 nparr = np.frombuffer(base64.b64decode(encoded_data), np.uint8)
@@ -95,8 +100,16 @@ async def websocket_endpoint(websocket: WebSocket):
                             "image": out_b64,
                             "data": data
                         })
+                else:
+                    await websocket.send_json({"error": "invalid_image"})
     except WebSocketDisconnect:
-        pass
+        print("Client disconnected.")
+    except Exception as e:
+        print(f"WebSocket Error: {e}")
+        try:
+            await websocket.close()
+        except:
+            pass
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

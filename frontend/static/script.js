@@ -79,6 +79,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isMonitoring) {
                     requestAnimationFrame(sendNextFrame);
                 }
+            } else if (response.error) {
+                // If the server rejected it (e.g. not running yet), keep trying
+                if (isMonitoring) {
+                    setTimeout(sendNextFrame, 50);
+                }
             }
         };
 
