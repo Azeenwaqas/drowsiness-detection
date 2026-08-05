@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // In production, change this to your Railway app URL (e.g. wss://your-app.up.railway.app/ws)
     const backendHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" 
                         ? `${window.location.host}` 
-                        : "web-production-57e89.up.railway.app";
+                        : "drowsiness-detection-production-98d6.up.railway.app";
     
     function connectWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
