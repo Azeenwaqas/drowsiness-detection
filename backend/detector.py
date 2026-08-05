@@ -50,10 +50,10 @@ EAR_CLOSED      = 0.22   # eyes closed threshold
 MAR_YAWN        = 0.65   # yawning threshold (YawDD benchmark)
 PERCLOS_LIMIT   = 0.18   # 18% eye closure in 60 frames = drowsy (Balanced)
 YAWN_FREQ_LIMIT = 3      # 3 yawns in 60 sec = drowsy (YawDD)
-YAWN_FRAMES     = 12     # frames mouth must be open to count as yawn
-DROWSY_FRAMES   = 30     # 1 second of half-closed eyes before DROWSY
-HARD_FRAMES     = 60     # 2 seconds before VERY_DROWSY
-NO_FACE_LIMIT   = 60     # frames no face before alert (~2 sec)
+YAWN_FRAMES     = 10     # frames mouth must be open to count as yawn
+DROWSY_FRAMES   = 12     # ~1 second before DROWSY
+HARD_FRAMES     = 24     # ~2 seconds before VERY_DROWSY
+NO_FACE_LIMIT   = 30     # ~2-3 seconds frames no face before alert
 
 # ─── Sound Engine ─────────────────────────────────────
 def _gen_wav(path, freq=1000, dur=0.4, vol=0.7, rate=44100):
@@ -422,6 +422,14 @@ class DrowsinessDetector:
         # ── PERCLOS (YawDD metric 1) ──────────────────
         self.ear_history.append(ear_val)
         if len(self.ear_history)>60: self.ear_history.pop(0)
+        
+        # INSTANT WAKE-UP FIX: If eyes are fully open, flush the history so alarm stops instantly!
+        if ear_val > self.ear_thresh + 0.03:
+            self.ear_history = [ear_val] * len(self.ear_history)
+            if hasattr(self, 'ml_drowsy_frames'):
+                self.ml_drowsy_frames = 0
+                self.ml_very_drowsy_frames = 0
+
         perclos = self._perclos()
 
         # ── Yawn detection (YawDD metric 2) ──────────
@@ -490,19 +498,19 @@ class DrowsinessDetector:
             self.ml_drowsy_frames += 1
         elif ml_state == 'Drowsy':
             self.ml_drowsy_frames += 1
-            self.ml_very_drowsy_frames = max(0, self.ml_very_drowsy_frames - 5)
+            self.ml_very_drowsy_frames = max(0, self.ml_very_drowsy_frames - 2)
         else:
-            self.ml_very_drowsy_frames = max(0, self.ml_very_drowsy_frames - 10)
-            self.ml_drowsy_frames = max(0, self.ml_drowsy_frames - 10)
+            self.ml_very_drowsy_frames = max(0, self.ml_very_drowsy_frames - 5)
+            self.ml_drowsy_frames = max(0, self.ml_drowsy_frames - 5)
 
-        if self.ml_very_drowsy_frames >= 30 or self.frame_counter >= HARD_FRAMES or self.bow_counter >= 50:
+        if self.ml_very_drowsy_frames >= 15 or self.frame_counter >= HARD_FRAMES or self.bow_counter >= 20:
             self.state = 'VERY_DROWSY'
-            if self.bow_counter >= 50:
+            if self.bow_counter >= 20:
                 self._set_alert("HEAD BOWED DOWN! WAKE UP!")
             else:
                 self._set_alert("DANGER! VERY DROWSY — WAKE UP!")
             self._sound("VERY_DROWSY")
-        elif self.ml_drowsy_frames >= 20 or self.frame_counter >= DROWSY_FRAMES or yawn_freq >= YAWN_FREQ_LIMIT:
+        elif self.ml_drowsy_frames >= 10 or self.frame_counter >= DROWSY_FRAMES or (yawn_freq >= YAWN_FREQ_LIMIT and self.yawning_now):
             self.state = 'DROWSY'
             self._set_alert(f"Drowsy! (PERCLOS={perclos:.0%})")
             self._sound("DROWSY")
@@ -572,5 +580,5 @@ class DrowsinessDetector:
             "alert_msg"       : self.alert_msg,
             "alert_count"     : self.alert_count,
             "session_duration": int(time.time()-self.start_time),
-            "face_box"        : [x1, y1, x2-x1, y2-y1] if res.multi_face_landmarks else None
+            "face_box"        : [int(x1), int(y1), int(x2-x1), int(y2-y1)]
         }

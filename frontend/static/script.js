@@ -1,7 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
     const btnStart = document.getElementById('btn-start');
     const btnStop = document.getElementById('btn-stop');
-    const videoFeed = document.getElementById('video-feed');
+    const localVideo = document.getElementById('local-video');
+    const overlayCanvas = document.getElementById('overlay-canvas');
+    const octx = overlayCanvas.getContext('2d');
     const videoPlaceholder = document.getElementById('video-placeholder');
     
     // Status elements
@@ -85,8 +87,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Create an offscreen canvas to extract frames
     const canvas = document.createElement('canvas');
-    canvas.width = 320;
-    canvas.height = 240;
     const ctx = canvas.getContext('2d');
 
     // Make sure to set the correct backend URL when deployed!
@@ -118,10 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (response.data) {
                 updateDashboard(response.data);
-            }
-            if (response.image) {
-                // Restore the beautiful OpenCV UI!
-                videoFeed.src = response.image;
+                drawOverlay(response.data);
                 
                 // Ask for the next frame ONLY after we finished rendering this one!
                 if (isMonitoring) {
@@ -190,18 +187,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let isSending = false;
 
+    function drawOverlay(data) {
+        // Clear previous overlay
+        octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+        
+        if (data.state === "VERY_DROWSY") {
+            // Draw red screen alert!
+            octx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+            octx.fillRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            octx.fillStyle = 'red';
+            octx.font = 'bold 40px Arial';
+            octx.fillText("WAKE UP!", overlayCanvas.width/2 - 100, overlayCanvas.height/2);
+        }
+        
+        if (data.face_box) {
+            const [x, y, w, h] = data.face_box;
+            
+            // Draw green bounding box for the face
+            octx.strokeStyle = data.state === "ALERT" ? '#10b981' : (data.state === "DROWSY" ? '#f59e0b' : '#ef4444');
+            octx.lineWidth = 4;
+            octx.strokeRect(x, y, w, h);
+            
+            // Draw text tag
+            octx.fillStyle = octx.strokeStyle;
+            octx.fillRect(x, y - 30, w, 30);
+            octx.fillStyle = '#fff';
+            octx.font = 'bold 20px Arial';
+            octx.fillText(data.state, x + 10, y - 8);
+        }
+    }
+
     function sendNextFrame() {
         if (isSending) return; // STRICT CONCURRENCY LOCK!
         if (isMonitoring && ws && ws.readyState === WebSocket.OPEN && localStream) {
             isSending = true;
             
-            // Mirror the image horizontally so it feels like a real mirror
+            // Send to backend via invisible canvas
+            // Mirror it so Python sees the same thing the user sees (which is mirrored by CSS)
+            ctx.save();
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
-            ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
-            ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+            ctx.drawImage(localVideo, 0, 0, canvas.width, canvas.height);
+            ctx.restore();
             
-            // Send to backend
             const base64Image = canvas.toDataURL('image/jpeg', 0.5); 
             ws.send(JSON.stringify({ type: "frame", image: base64Image }));
         }
@@ -209,14 +237,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function startCamera() {
         try {
-            // Request High-Definition (HD) 720p video at 30 FPS for much better quality
+            // Request High-Definition (HD) video
             localStream = await navigator.mediaDevices.getUserMedia({ 
                 video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } } 
             });
-            hiddenVideo.srcObject = localStream;
+            localVideo.srcObject = localStream;
             
             // Wait for the video to start playing before sending the first frame
-            hiddenVideo.onplaying = () => {
+            localVideo.onplaying = () => {
+                // Get native webcam resolution to prevent stretching
+                const vw = localVideo.videoWidth || 640;
+                const vh = localVideo.videoHeight || 480;
+                
+                // Cap the maximum width for the ML processing canvas to ensure FAST network
+                const maxW = 480; // Small payload for max speed!
+                if (vw > maxW) {
+                    canvas.width = maxW;
+                    canvas.height = Math.floor(vh * (maxW / vw));
+                } else {
+                    canvas.width = vw;
+                    canvas.height = vh;
+                }
+                
+                // Setup the overlay canvas to MATCH the local video perfectly
+                overlayCanvas.width = maxW; 
+                overlayCanvas.height = Math.floor(vh * (maxW / vw)); 
+                
                 if (isMonitoring) sendNextFrame();
             };
             
@@ -244,7 +290,8 @@ document.addEventListener('DOMContentLoaded', () => {
             ws.send(JSON.stringify({ type: 'start' }));
         }
         
-        videoFeed.classList.remove('hidden');
+        localVideo.classList.remove('hidden');
+        overlayCanvas.classList.remove('hidden');
         videoPlaceholder.classList.add('hidden');
         
         isMonitoring = true;
@@ -256,8 +303,8 @@ document.addEventListener('DOMContentLoaded', () => {
             ws.send(JSON.stringify({ type: 'stop' }));
         }
         
-        videoFeed.src = '';
-        videoFeed.classList.add('hidden');
+        localVideo.classList.add('hidden');
+        overlayCanvas.classList.add('hidden');
         videoPlaceholder.classList.remove('hidden');
         
         isMonitoring = false;

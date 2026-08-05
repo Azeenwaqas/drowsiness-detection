@@ -29,7 +29,8 @@
             <section class="camera-col">
 
                 <div class="video-box" id="video-box">
-                    <img id="video-feed" src="" alt="Processed webcam feed" class="hidden">
+                    <video id="local-video" autoplay playsinline muted class="hidden"></video>
+                    <canvas id="overlay-canvas" class="hidden"></canvas>
                     <div id="video-placeholder" class="placeholder">
                         <span class="cam-icon">📷</span>
                         <p>Camera is off.<br>Press <strong>Start Monitoring</strong> to begin.</p>

@@ -122,15 +122,11 @@ async def websocket_endpoint(websocket: WebSocket):
                             print("DB Error:", db_e)
                         websocket.previous_state = current_state
                     
-                    # We must send the image back so the frontend can display the beautiful OpenCV UI overlays!
-                    ret, buffer = cv2.imencode('.jpg', out_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 40])
-                    if ret:
-                        out_b64 = "data:image/jpeg;base64," + base64.b64encode(buffer).decode('utf-8')
-                        
-                        await websocket.send_json({
-                            "image": out_b64,
-                            "data": data
-                        })
+                    # We no longer send the heavy image back! We just send the lightweight JSON data!
+                    # The frontend will render the bounding box over the local video stream for zero lag!
+                    await websocket.send_json({
+                        "data": data
+                    })
                 else:
                     await websocket.send_json({"error": "invalid_image"})
     except WebSocketDisconnect:
