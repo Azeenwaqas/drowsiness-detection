@@ -10,11 +10,11 @@ RUN apt-get update && apt-get install -y \
 
 # cache-bust: 2026-08-04-v4
 WORKDIR /app
-COPY backend/requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend files to container root
-COPY backend/ .
+COPY . .
 
 # Run FastAPI using the dynamic port Railway assigns
 CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
