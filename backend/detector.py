@@ -511,47 +511,46 @@ class DrowsinessDetector:
         sc = STATE_COLOR[self.state]
 
         # ── FACE bounding box (rounded, color = state) ─
-        x1,y1,x2,y2 = get_face_bbox(lm,w,h,pad=18)
-        draw_rounded_rect(frame,x1,y1,x2,y2,sc,t=2,r=18)
+        x1,y1,x2,y2 = get_face_bbox(lm,w,h,pad=10)
+        draw_rounded_rect(frame,x1,y1,x2,y2,sc,t=1,r=10)
 
         # State badge on top of face box
         badge = f" {self.state} "
-        (bw2,bh2),_ = cv2.getTextSize(badge,cv2.FONT_HERSHEY_SIMPLEX,0.58,2)
+        (bw2,bh2),_ = cv2.getTextSize(badge,cv2.FONT_HERSHEY_SIMPLEX,0.35,1)
         bx = x1+(x2-x1)//2-bw2//2
-        cv2.rectangle(frame,(bx-4,y1-bh2-10),(bx+bw2+4,y1),sc,-1)
-        cv2.putText(frame,badge,(bx,y1-4),
-                    cv2.FONT_HERSHEY_SIMPLEX,0.58,C['black'],2)
+        cv2.rectangle(frame,(bx-2,y1-bh2-6),(bx+bw2+2,y1),sc,-1)
+        cv2.putText(frame,badge,(bx,y1-2),
+                    cv2.FONT_HERSHEY_SIMPLEX,0.35,C['black'],1)
 
         # ── EYE boxes ─────────────────────────────────
         eye_c = C['red'] if eyes_closed else C['green']
         draw_feature_box(frame,lm,LEFT_EYE, w,h,eye_c,
-                         f"EYES:{ear_val:.2f}",pad=6)
+                         f"EYES:{ear_val:.2f}",pad=3)
         draw_feature_box(frame,lm,RIGHT_EYE,w,h,eye_c,
-                         f"EYES:{ear_val:.2f}",pad=6)
+                         f"EYES:{ear_val:.2f}",pad=3)
 
         # ── MOUTH box ─────────────────────────────────
         mouth_c = C['red'] if self.yawning_now else C['orange']
         mouth_lbl = f"YAWNING! ({yawn_freq}/min)" if self.yawning_now \
                     else f"MAR:{mar_val:.2f}"
-        draw_feature_box(frame,lm,MOUTH_OUTER,w,h,mouth_c,mouth_lbl,pad=5)
+        draw_feature_box(frame,lm,MOUTH_OUTER,w,h,mouth_c,mouth_lbl,pad=3)
 
         # ── Yawn counter badge (top-right) ────────────
         yc = C['red'] if yawn_freq >= YAWN_FREQ_LIMIT else C['white']
         put_label_bg(frame,f"YAWNS:{yawn_freq}/min",
-                     w-160,30,yc,scale=0.52,t=1)
+                     w-90,15,yc,scale=0.35,t=1)
 
         # ── Top info bar ──────────────────────────────
-        cv2.putText(frame,f"STATE: {self.state}",(10,36),
-                    cv2.FONT_HERSHEY_SIMPLEX,0.88,sc,2)
+        cv2.putText(frame,f"STATE: {self.state}",(5,18),
+                    cv2.FONT_HERSHEY_SIMPLEX,0.45,sc,1)
         cv2.putText(frame,
-            f"EYES:{ear_val:.3f}(th:{self.ear_thresh})  "
-            f"MAR:{mar_val:.3f}(th:{self.mar_thresh:.2f})  "
-            f"PERCLOS:{perclos:.0%}  "
-            f"FC:{self.frame_counter}/{DROWSY_FRAMES}",
-            (10,66),cv2.FONT_HERSHEY_SIMPLEX,0.42,(200,200,200),1)
+            f"EYES:{ear_val:.2f}(th:{self.ear_thresh}) "
+            f"MAR:{mar_val:.2f}(th:{self.mar_thresh:.2f}) "
+            f"PERCLOS:{perclos:.0%}",
+            (5,32),cv2.FONT_HERSHEY_SIMPLEX,0.28,(200,200,200),1)
         
         cv2.putText(frame, f"ML: {ml_state} ({confidence*100:.0f}%)", 
-                    (10, 88), cv2.FONT_HERSHEY_SIMPLEX, 0.48, sc, 1)
+                    (5, 46), cv2.FONT_HERSHEY_SIMPLEX, 0.35, sc, 1)
 
         # ── Red overlay for VERY_DROWSY ───────────────
         if self.state == "VERY_DROWSY":
@@ -559,7 +558,7 @@ class DrowsinessDetector:
             cv2.rectangle(ov,(0,0),(w,h),(0,0,180),-1)
             cv2.addWeighted(ov,0.28,frame,0.72,0,frame)
             cv2.putText(frame,"WAKE UP!",
-                (w//2-140,h//2),cv2.FONT_HERSHEY_SIMPLEX,2.2,C['red'],5)
+                (w//2-60,h//2),cv2.FONT_HERSHEY_SIMPLEX,1.0,C['red'],2)
 
         return frame,{
             "state"           : self.state,
