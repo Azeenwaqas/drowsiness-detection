@@ -44,20 +44,69 @@ document.addEventListener('DOMContentLoaded', () => {
     hiddenVideo.playsInline = true;
     hiddenVideo.muted = true;
     
+    // --- Audio Engine for Siren ---
+    let audioCtx = null;
+    let sirenOsc = null;
+    let lfoOsc = null;
+    let isSirenPlaying = false;
+    
+    function playSiren() {
+        if (isSirenPlaying) return;
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        
+        isSirenPlaying = true;
+        sirenOsc = audioCtx.createOscillator();
+        lfoOsc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        sirenOsc.type = 'square';
+        sirenOsc.frequency.value = 800; // Base 800 Hz
+        
+        lfoOsc.type = 'square';
+        lfoOsc.frequency.value = 2; // Alternate 2 times a second
+        
+        const lfoGain = audioCtx.createGain();
+        lfoGain.gain.value = 400; // Add 400 Hz (so it alternates 800/1200)
+        
+        lfoOsc.connect(lfoGain);
+        lfoGain.connect(sirenOsc.frequency);
+        
+        sirenOsc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        gainNode.gain.value = 0.5; // Volume
+        
+        sirenOsc.start();
+        lfoOsc.start();
+    }
+    
+    function stopSiren() {
+        if (!isSirenPlaying) return;
+        isSirenPlaying = false;
+        try {
+            if (sirenOsc) sirenOsc.stop();
+            if (lfoOsc) lfoOsc.stop();
+        } catch(e) {}
+    }
+    // -----------------------------
+    
     // Create an offscreen canvas to extract frames
     const canvas = document.createElement('canvas');
-    canvas.width = 320;
-    canvas.height = 240;
+    canvas.width = 640;
+    canvas.height = 480;
     const ctx = canvas.getContext('2d');
 
-    // Make sure to set the correct backend URL when deployed!
-    // In production, change this to your Railway app URL (e.g. wss://your-app.up.railway.app/ws)
-    const backendHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" 
-                        ? `${window.location.host}` 
+    // Force connection to local python backend (port 8000) when running locally or via file://
+    const isLocal = window.location.hostname === "localhost" || 
+                    window.location.hostname === "127.0.0.1" || 
+                    window.location.protocol === "file:";
+                    
+    const backendHost = isLocal 
+                        ? "127.0.0.1:8000" 
                         : "drowsiness-detection-production-98d6.up.railway.app";
     
     function connectWebSocket() {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const protocol = (window.location.protocol === 'https:' && !isLocal) ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${backendHost}/ws`;
         
         ws = new WebSocket(wsUrl);
@@ -110,20 +159,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const icon = icons[state] || '⚪';
         currentState.innerHTML = `${icon} ${state.replace('_', ' ')}`;
 
-        // Update alert message
+        // Update alert message and audio
         const alertMsg = data.alert_msg || '';
         if (state === "VERY_DROWSY") {
             alertBox.className = 'alert alert-danger';
             alertBox.innerHTML = `🚨 ${alertMsg}`;
+            playSiren();
         } else if (["DROWSY", "NO_FACE", "AWAY"].includes(state) && alertMsg) {
             alertBox.className = 'alert alert-warn';
             alertBox.innerHTML = `⚠️ ${alertMsg}`;
+            stopSiren(); // Replace with beep in future if needed
         } else if (state === "STOPPED") {
             alertBox.className = 'alert alert-ok';
             alertBox.innerHTML = `ℹ️ System stopped.`;
+            stopSiren();
         } else {
             alertBox.className = 'alert alert-ok';
             alertBox.innerHTML = `✅ Driver Alert — All Good`;
+            stopSiren();
         }
 
         // Log state changes to history
