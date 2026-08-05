@@ -205,6 +205,11 @@ def draw_feature_box(img, lm, indices, w, h, color, label="", pad=5):
         cv2.putText(img, label,(x-pad+2,y-pad-2),
                     cv2.FONT_HERSHEY_SIMPLEX,0.38,color,1)
 
+def get_feature_bbox_coords(lm, indices, w, h, pad=5):
+    pts = np.array([(int(lm[i].x*w), int(lm[i].y*h)) for i in indices])
+    x,y,bw,bh = cv2.boundingRect(pts)
+    return [int(x-pad), int(y-pad), int(bw+2*pad), int(bh+2*pad)]
+
 def put_label_bg(img, text, x, y, color, scale=0.5, t=1):
     (tw,th),_ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, scale, t)
     cv2.rectangle(img,(x-2,y-th-3),(x+tw+2,y+3),(0,0,0),-1)
@@ -580,5 +585,10 @@ class DrowsinessDetector:
             "alert_msg"       : self.alert_msg,
             "alert_count"     : self.alert_count,
             "session_duration": int(time.time()-self.start_time),
-            "face_box"        : [int(x1), int(y1), int(x2-x1), int(y2-y1)]
+            "face_box"        : [int(x1), int(y1), int(x2-x1), int(y2-y1)],
+            "left_eye_box"    : get_feature_bbox_coords(lm, LEFT_EYE, w, h, pad=3),
+            "right_eye_box"   : get_feature_bbox_coords(lm, RIGHT_EYE, w, h, pad=3),
+            "mouth_box"       : get_feature_bbox_coords(lm, MOUTH_OUTER, w, h, pad=3),
+            "eyes_closed"     : bool(eyes_closed),
+            "yawning_now"     : bool(self.yawning_now)
         }

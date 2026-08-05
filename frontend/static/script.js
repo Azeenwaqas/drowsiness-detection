@@ -215,6 +215,39 @@ document.addEventListener('DOMContentLoaded', () => {
             octx.font = 'bold 20px Arial';
             octx.fillText(data.state, x + 10, y - 8);
         }
+
+        // Draw left eye box
+        if (data.left_eye_box) {
+            const [x, y, w, h] = data.left_eye_box;
+            octx.strokeStyle = data.eyes_closed ? '#ef4444' : '#10b981';
+            octx.lineWidth = 2;
+            octx.strokeRect(x, y, w, h);
+            octx.fillStyle = octx.strokeStyle;
+            octx.font = 'bold 11px Arial';
+            octx.fillText(`EYE: ${data.eyes}`, x, y - 4);
+        }
+
+        // Draw right eye box
+        if (data.right_eye_box) {
+            const [x, y, w, h] = data.right_eye_box;
+            octx.strokeStyle = data.eyes_closed ? '#ef4444' : '#10b981';
+            octx.lineWidth = 2;
+            octx.strokeRect(x, y, w, h);
+            octx.fillStyle = octx.strokeStyle;
+            octx.font = 'bold 11px Arial';
+            octx.fillText(`EYE: ${data.eyes}`, x, y - 4);
+        }
+
+        // Draw mouth box
+        if (data.mouth_box) {
+            const [x, y, w, h] = data.mouth_box;
+            octx.strokeStyle = data.yawning_now ? '#ef4444' : '#f59e0b';
+            octx.lineWidth = 2;
+            octx.strokeRect(x, y, w, h);
+            octx.fillStyle = octx.strokeStyle;
+            octx.font = 'bold 11px Arial';
+            octx.fillText(data.yawning_now ? "YAWNING!" : `MAR: ${data.mar}`, x, y - 4);
+        }
     }
 
     function sendNextFrame() {
