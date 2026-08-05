@@ -141,9 +141,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function sendNextFrame() {
         if (isMonitoring && ws && ws.readyState === WebSocket.OPEN && localStream) {
+            // Mirror the image horizontally so it feels like a real mirror
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
             ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
-            // Lower quality slightly to improve latency
-            const base64Image = canvas.toDataURL('image/jpeg', 0.5); 
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+            
+            // Send to backend
+            const base64Image = canvas.toDataURL('image/jpeg', 0.6); 
             ws.send(JSON.stringify({ type: "frame", image: base64Image }));
         }
     }
