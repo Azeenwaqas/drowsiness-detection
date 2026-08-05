@@ -41,6 +41,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Create an invisible video element to capture the webcam feed
     const hiddenVideo = document.createElement('video');
     hiddenVideo.autoplay = true;
+    hiddenVideo.playsInline = true;
+    hiddenVideo.muted = true;
     
     // Create an offscreen canvas to extract frames
     const canvas = document.createElement('canvas');
@@ -63,6 +65,12 @@ document.addEventListener('DOMContentLoaded', () => {
         ws.onopen = () => {
             console.log('WebSocket connected to', wsUrl);
             if (wsStatus) { wsStatus.textContent = '🟢 Connected to backend'; wsStatus.className = 'ws-status connected'; }
+            
+            // If the user already clicked start while connecting, kickstart the loop now!
+            if (isMonitoring && localStream) {
+                ws.send(JSON.stringify({ type: 'start' }));
+                sendNextFrame();
+            }
         };
 
         ws.onmessage = (event) => {
