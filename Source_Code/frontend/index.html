@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="DrowsyGuard — Real-time AI drowsiness detection for drivers using webcam and machine learning.">
+    <title>DrowsyGuard | Real-Time Monitor</title>
+    <link rel="stylesheet" href="static/style.css?v=4">
+</head>
+<body>
+
+    <div class="page">
+
+        <!-- ── Header ──────────────────────────── -->
+        <header class="header">
+            <h1>🚗 DrowsyGuard</h1>
+            <p class="subtitle">
+                CoderAxo AI/ML Internship &bull; CAX-OL-2026-290 &bull;
+                <strong>Muhammad Azeen Waqas</strong> &bull;
+                COMSATS University Islamabad, Wah Campus &bull;
+                <span class="tag">YawDD + SVM</span>
+            </p>
+        </header>
+
+        <!-- ── Main ────────────────────────────── -->
+        <main class="layout">
+
+            <!-- Left: Camera -->
+            <section class="camera-col">
+
+                <div class="video-box" id="video-box">
+                    <video id="local-video" autoplay playsinline muted class="hidden"></video>
+                    <canvas id="overlay-canvas" class="hidden"></canvas>
+                    <div id="video-placeholder" class="placeholder">
+                        <span class="cam-icon">📷</span>
+                        <p>Camera is off.<br>Press <strong>Start Monitoring</strong> to begin.</p>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button id="btn-start" class="btn btn-start">▶ Start Monitoring</button>
+                    <button id="btn-stop"  class="btn btn-stop">⏹ Stop</button>
+                </div>
+
+                <div id="ws-status" class="ws-status connecting">Connecting to backend…</div>
+
+            </section>
+
+            <!-- Right: Dashboard -->
+            <section class="dash-col">
+
+                <div class="status-card" id="status-card">
+                    <h2 id="current-state">⚪ STOPPED</h2>
+                </div>
+
+                <div id="alert-box" class="alert alert-ok">✅ System is ready.</div>
+
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <span class="metric-label">👁 EYES (EAR)</span>
+                        <span id="metric-eyes" class="metric-val">0.000</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">👄 MOUTH (MAR)</span>
+                        <span id="metric-mar" class="metric-val">0.000</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">📊 PERCLOS</span>
+                        <span id="metric-perclos" class="metric-val">0%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">😮 YAWNS/min</span>
+                        <span id="metric-yawns" class="metric-val">0</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">⏱ SESSION</span>
+                        <span id="metric-session" class="metric-val">0s</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">🤖 ML MODEL</span>
+                        <span id="metric-ml" class="metric-val">- 0%</span>
+                    </div>
+                </div>
+
+                <!-- History & Export -->
+                <div class="history-section">
+                    <div class="history-header">
+                        <h3>📋 Session History</h3>
+                        <button id="btn-export" class="btn-export">⬇️ Export CSV</button>
+                    </div>
+                    <ul id="history-list" class="history-list">
+                        <li class="history-placeholder" id="history-placeholder">No events recorded yet.</li>
+                    </ul>
+                </div>
+
+            </section>
+
+        </main>
+
+    </div>
+
+    <script src="static/script.js?v=5"></script>
+</body>
+</html>

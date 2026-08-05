@@ -27,18 +27,21 @@ DrowsyGuard/
 ├── Notebook.ipynb           ← Primary submission (Jupyter Notebook)
 ├── Report.pdf               ← Project Report (12 sections, 12 pages)
 ├── README.md                ← This file
-├── requirements.txt         ← Python dependencies
-├── backend/
-│   ├── main.py              ← FastAPI WebSocket backend server
-│   ├── detector.py          ← Core YawDD-aligned ML detector
-│   └── alarm.wav            ← Synthesized alarm audio
-├── frontend/
-│   ├── index.html           ← HTML5 Frontend Application
-│   └── static/              
-│       ├── script.js        ← Client-side WebRTC & Canvas drawing
-│       └── styles.css       ← Glassmorphism UI styling
-├── best_model.pkl       ← Pre-trained SVM model (98.4% Accuracy)
-└── Demo_Video.mp4       ← Screen recording (5-10 min)
+├── Dataset/                 ← Contains dataset details and link
+│   └── dataset_link.txt
+├── Output_Images/           ← Visualizations and performance graphs
+├── Source_Code/             ← Complete application codebase
+│   ├── backend/             ← FastAPI backend with model integration
+│   │   ├── main.py          ← FastAPI WebSocket server
+│   │   ├── detector.py      ← Core driver monitoring logic
+│   │   ├── best_model.pkl   ← Pre-trained SVM model
+│   │   └── requirements.txt ← Backend dependencies
+│   └── frontend/            ← Front-end interface files
+│       ├── index.html
+│       └── static/
+│           ├── script.js    ← Local video canvas & client drawing
+│           └── style.css    ← UI dashboard stylesheet
+└── Demo_Video.mp4           ← Screen recording (5-10 min)
 ```
 
 ---
