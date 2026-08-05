@@ -74,6 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         ws.onmessage = (event) => {
+            isSending = false; // UNLOCK! Server finished processing the frame!
             const response = JSON.parse(event.data);
             
             if (response.data) {
@@ -96,6 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         ws.onclose = () => {
+            isSending = false;
             console.log('WebSocket disconnected. Reconnecting...');
             if (wsStatus) { wsStatus.textContent = '🔴 Disconnected — reconnecting…'; wsStatus.className = 'ws-status error'; }
             setTimeout(connectWebSocket, 2000);
@@ -139,8 +141,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.ml_label !== undefined) metricMl.innerText = `${data.ml_label} ${Math.round((data.confidence || 0) * 100)}%`;
     }
 
+    let isSending = false;
+
     function sendNextFrame() {
+        if (isSending) return; // STRICT CONCURRENCY LOCK!
         if (isMonitoring && ws && ws.readyState === WebSocket.OPEN && localStream) {
+            isSending = true;
+            
             // Mirror the image horizontally so it feels like a real mirror
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
@@ -148,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
             
             // Send to backend
-            const base64Image = canvas.toDataURL('image/jpeg', 0.6); 
+            const base64Image = canvas.toDataURL('image/jpeg', 0.5); 
             ws.send(JSON.stringify({ type: "frame", image: base64Image }));
         }
     }
