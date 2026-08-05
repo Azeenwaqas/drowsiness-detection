@@ -49,9 +49,7 @@ latest_data = {
     'confidence': 0.0
 }
 
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+# Pure API Backend - No HTML rendering needed
 
 import base64
 
