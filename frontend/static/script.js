@@ -54,6 +54,26 @@ document.addEventListener('DOMContentLoaded', () => {
         oscillator.stop(audioCtx.currentTime + 0.3);
     }
 
+    function playShortWarning() {
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
+        
+        gainNode.gain.setValueAtTime(0.35, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.2);
+    }
+
     function startAlarm() {
         if (!alarmInterval) {
             alarmInterval = setInterval(playAlarmSound, 400); 
@@ -152,14 +172,21 @@ document.addEventListener('DOMContentLoaded', () => {
             alertBox.className = 'alert alert-danger';
             alertBox.innerHTML = `🚨 ${alertMsg}`;
             startAlarm();
-        } else if (["DROWSY", "NO_FACE", "AWAY"].includes(state) && alertMsg) {
+        } else if (state === "DROWSY") {
             alertBox.className = 'alert alert-warn';
             alertBox.innerHTML = `⚠️ ${alertMsg}`;
-            if (state === "DROWSY" || state === "AWAY") {
-                startAlarm();
-            } else {
-                stopAlarm();
+            stopAlarm(); // Stop continuous alarm
+            if (state !== previousState) {
+                playShortWarning(); // Play a short warning tone once
             }
+        } else if (state === "AWAY") {
+            alertBox.className = 'alert alert-warn';
+            alertBox.innerHTML = `⚠️ ${alertMsg}`;
+            startAlarm();
+        } else if (state === "NO_FACE") {
+            alertBox.className = 'alert alert-warn';
+            alertBox.innerHTML = `⚠️ ${alertMsg}`;
+            stopAlarm();
         } else if (state === "STOPPED") {
             alertBox.className = 'alert alert-ok';
             alertBox.innerHTML = `ℹ️ System stopped.`;

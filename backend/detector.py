@@ -316,7 +316,7 @@ class DrowsinessDetector:
         # ══════════════════════════════════════════════
         if not self.calibrated:
             n   = len(self.calib_ear)
-            pct = int(n/60*100)
+            pct = int(n/15*100)
             bw  = int(w*pct/100)
             cv2.rectangle(frame,(0,90),(bw,96),C['cyan'],-1)
             cv2.putText(frame,
@@ -336,7 +336,7 @@ class DrowsinessDetector:
                 self.calib_mar.append(m)
                 self.calib_pitch.append(p)
 
-            if n >= 60:
+            if n >= 15:
                 base_ear        = np.mean(self.calib_ear)
                 base_mar        = np.mean(self.calib_mar)
                 self.base_pitch = np.mean(self.calib_pitch) if self.calib_pitch else 0.0
@@ -435,11 +435,12 @@ class DrowsinessDetector:
         if len(self.ear_history)>60: self.ear_history.pop(0)
         
         # INSTANT WAKE-UP FIX: If eyes are fully open, flush the history so alarm stops instantly!
-        if ear_val > self.ear_thresh + 0.03:
+        if ear_val > self.ear_thresh + 0.02:
             self.ear_history = [ear_val] * len(self.ear_history)
-            if hasattr(self, 'ml_drowsy_frames'):
-                self.ml_drowsy_frames = 0
-                self.ml_very_drowsy_frames = 0
+            self.eyes_closed_start = None
+            self.ml_drowsy_start = None
+            self.ml_very_drowsy_start = None
+            self.head_bow_start = None
 
         perclos = self._perclos()
 
@@ -452,9 +453,8 @@ class DrowsinessDetector:
                 self.yawning_now = True
                 self.yawn_events.append(time.time())
         else:
-            self.yawn_counter = max(0, self.yawn_counter-2)
-            if self.yawn_counter == 0:
-                self.yawning_now = False
+            self.yawn_counter = 0
+            self.yawning_now = False
 
         yawn_freq = self._yawn_freq()
 
@@ -528,17 +528,17 @@ class DrowsinessDetector:
             ml_drowsy_duration = 0.0
 
         # Time thresholds (seconds)
-        # VERY_DROWSY triggers if eyes closed >= 1.5s, ML very drowsy >= 1.2s, or head bowed >= 1.2s
-        # DROWSY triggers if eyes closed >= 0.8s, ML drowsy >= 0.8s, or active yawn
+        # VERY_DROWSY triggers if eyes closed >= 3.0s, ML very drowsy >= 2.5s, or head bowed >= 2.5s
+        # DROWSY triggers if eyes closed >= 2.0s, ML drowsy >= 2.0s, or active yawn
         
-        if ml_very_drowsy_duration >= 1.2 or eye_closure_duration >= 1.5 or head_bow_duration >= 1.2:
+        if ml_very_drowsy_duration >= 2.5 or eye_closure_duration >= 3.0 or head_bow_duration >= 2.5:
             self.state = 'VERY_DROWSY'
-            if head_bow_duration >= 1.2:
+            if head_bow_duration >= 2.5:
                 self._set_alert("HEAD BOWED DOWN! WAKE UP!")
             else:
                 self._set_alert("DANGER! VERY DROWSY — WAKE UP!")
             self._sound("VERY_DROWSY")
-        elif ml_drowsy_duration >= 0.8 or eye_closure_duration >= 0.8 or (yawn_freq >= YAWN_FREQ_LIMIT and self.yawning_now):
+        elif ml_drowsy_duration >= 2.0 or eye_closure_duration >= 2.0 or (yawn_freq >= YAWN_FREQ_LIMIT and self.yawning_now):
             self.state = 'DROWSY'
             self._set_alert(f"Drowsy! (PERCLOS={perclos:.0%})")
             self._sound("DROWSY")
