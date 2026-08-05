@@ -132,8 +132,9 @@ sound = _Sound()
 import mediapipe as mp
 mp_face_mesh = mp.solutions.face_mesh
 face_mesh = mp_face_mesh.FaceMesh(
-    static_image_mode=False, max_num_faces=1,
-    refine_landmarks=True,
+    static_image_mode=False, 
+    max_num_faces=1,
+    refine_landmarks=False, # CRITICAL: Huge performance boost, we don't need iris tracking
     min_detection_confidence=0.3,
     min_tracking_confidence=0.3
 )
@@ -263,12 +264,9 @@ class DrowsinessDetector:
 
     # ── Internal helpers ──────────────────────────────
     def _sound(self, state):
-        if state == self._last_snd: return
-        self._last_snd = state
-        sound.stop()
-        if   state == "DROWSY":      sound.play(BEEP_PATH,  loop=True)
-        elif state == "VERY_DROWSY": sound.play(ALARM_PATH, loop=True)
-        elif state == "AWAY":        sound.play(AWAY_PATH,  loop=True)
+        # Disabled on backend to save resources (server has no speakers)
+        # Audio should be played on the frontend client side
+        pass
 
     def _set_alert(self, msg):
         if self.alert_msg != msg: self.alert_count += 1

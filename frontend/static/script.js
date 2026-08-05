@@ -44,8 +44,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Create an offscreen canvas to extract frames
     const canvas = document.createElement('canvas');
-    canvas.width = 640;
-    canvas.height = 480;
+    canvas.width = 320;
+    canvas.height = 240;
     const ctx = canvas.getContext('2d');
 
     // Make sure to set the correct backend URL when deployed!
