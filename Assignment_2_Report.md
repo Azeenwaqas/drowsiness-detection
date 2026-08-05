@@ -62,4 +62,3 @@ To demonstrate true end-to-end capabilities, the application has been deployed t
 
 ## 6. Project Submission Links
 - **Google Drive Project Folder (Source Code, Demo Video & Report):** [https://drive.google.com/drive/folders/1wxBx_gn_X-MOUlmefHjdpQLtRjbdpJYk?usp=sharing](https://drive.google.com/drive/folders/1wxBx_gn_X-MOUlmefHjdpQLtRjbdpJYk?usp=sharing)
-- **GitHub Repository (Updated Source Code):** [https://github.com/Azeenwaqas/drowsiness-detection.git](https://github.com/Azeenwaqas/drowsiness-detection.git)
