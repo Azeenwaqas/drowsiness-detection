@@ -26,6 +26,13 @@ document.addEventListener('DOMContentLoaded', () => {
         "STOPPED": "⚪"
     };
 
+    // History tracking
+    let sessionHistory = [];
+    let previousState = "STOPPED";
+    const historyList = document.getElementById('history-list');
+    const historyPlaceholder = document.getElementById('history-placeholder');
+    const btnExport = document.getElementById('btn-export');
+
     let ws = null;
     let isMonitoring = false;
     let localStream = null;
@@ -99,6 +106,12 @@ document.addEventListener('DOMContentLoaded', () => {
             alertBox.innerHTML = `✅ Driver Alert — All Good`;
         }
 
+        // Log state changes to history
+        if (state !== previousState && state !== "STOPPED") {
+            logHistoryEvent(state, alertMsg || state.replace('_', ' '));
+            previousState = state;
+        }
+
         // Update metrics
         if (data.eyes !== undefined) metricEyes.innerText = data.eyes.toFixed(3);
         if (data.mar !== undefined) metricMar.innerText = data.mar.toFixed(3);
@@ -168,6 +181,45 @@ document.addEventListener('DOMContentLoaded', () => {
             alert_msg: "Monitoring Stopped",
             eyes: 0, mar: 0, perclos: 0, yawn_count: 0, session_duration: 0, ml_label: "-", confidence: 0
         });
+    });
+
+    function logHistoryEvent(state, message) {
+        if (historyPlaceholder) historyPlaceholder.remove();
+        
+        const timestamp = new Date().toLocaleTimeString();
+        sessionHistory.push({ time: timestamp, state: state, message: message });
+        
+        const li = document.createElement('li');
+        li.className = 'history-item';
+        if (state === "VERY_DROWSY") li.classList.add('danger');
+        else if (["DROWSY", "AWAY", "NO_FACE"].includes(state)) li.classList.add('warn');
+        else li.classList.add('info');
+        
+        li.innerHTML = `<span class="history-time">${timestamp}</span> <strong>${state.replace('_', ' ')}</strong> - ${message}`;
+        historyList.prepend(li);
+    }
+
+    btnExport.addEventListener('click', () => {
+        if (sessionHistory.length === 0) {
+            alert("No events to export yet!");
+            return;
+        }
+        
+        const csvRows = ['Time,State,Message'];
+        for (const row of sessionHistory) {
+            const escapedMsg = row.message.replace(/"/g, '""');
+            csvRows.push(`"${row.time}","${row.state}","${escapedMsg}"`);
+        }
+        
+        const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.setAttribute('hidden', '');
+        a.setAttribute('href', url);
+        a.setAttribute('download', 'drowsyguard_session_history.csv');
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
     });
 
     // Initialize
