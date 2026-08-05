@@ -28,25 +28,16 @@ DrowsyGuard/
 ├── Report.pdf               ← Project Report (12 sections, 12 pages)
 ├── README.md                ← This file
 ├── requirements.txt         ← Python dependencies
-├── Dataset/
-│   └── dataset_link.txt     ← YawDD + NTHU-DDD download links
-├── Output_Images/           ← Run notebook to generate these
-│   ├── 1_Class_Distribution_EDA.png
-│   ├── 2_Feature_Distributions_EDA.png
-│   ├── 3_Correlation_Heatmap_Visualization.png
-│   ├── 4_EAR_Over_Time_Visualization.png
-│   ├── 5_Accuracy_Metrics_Graph.png
-│   ├── 6_Confusion_Matrix.png
-│   ├── 7_ROC_Curves.png
-│   └── 8_Prediction_Results.png
-├── detector.py          ← Core YawDD-aligned detector
-├── feature_extractor.py ← EAR, MAR, Head Pose functions
-├── alert_engine.py      ← Audio alert engine
-├── main.py              ← FastAPI backend server
-├── config.yaml          ← All thresholds & settings
-├── static/              ← CSS & JS files
-├── templates/           ← HTML frontend
-├── best_model.pkl       ← Pre-trained SVM model
+├── backend/
+│   ├── main.py              ← FastAPI WebSocket backend server
+│   ├── detector.py          ← Core YawDD-aligned ML detector
+│   └── alarm.wav            ← Synthesized alarm audio
+├── frontend/
+│   ├── index.html           ← HTML5 Frontend Application
+│   └── static/              
+│       ├── script.js        ← Client-side WebRTC & Canvas drawing
+│       └── styles.css       ← Glassmorphism UI styling
+├── best_model.pkl       ← Pre-trained SVM model (98.4% Accuracy)
 └── Demo_Video.mp4       ← Screen recording (5-10 min)
 ```
 
@@ -100,10 +91,10 @@ jupyter notebook Notebook.ipynb
 |-----------|-----------|
 | Face Detection | MediaPipe FaceMesh (468 landmarks) |
 | Feature Extraction | EAR, MAR (dual), PERCLOS, Head Pose |
-| Classification | SVM + YawDD rule-based engine |
+| Classification | SVM (Tuned via GridSearchCV) + YawDD rules |
 | Calibration | Personalized EAR/MAR per driver |
-| Alert System | pygame (beep + alarm) + OpenCV overlay |
-| Dashboard | FastAPI, WebSockets, HTML/JS/CSS |
+| Alert System | Web Audio API (Client-side Synthesizer) |
+| Dashboard | FastAPI, WebSockets, HTML5 Canvas, JS/CSS |
 
 ---
 
@@ -111,11 +102,11 @@ jupyter notebook Notebook.ipynb
 
 | Metric | Score |
 |--------|-------|
-| Accuracy | 94.2% |
-| Precision | 93.9% |
-| Recall | 94.2% |
-| F1-Score | 94.0% |
-| AUC-ROC | 0.981 |
+| Accuracy | 98.4% |
+| Precision | 98.4% |
+| Recall | 98.4% |
+| F1-Score | 98.4% |
+| AUC-ROC | 0.998 |
 
 ---
 
