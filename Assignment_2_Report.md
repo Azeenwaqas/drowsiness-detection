@@ -56,4 +56,10 @@ These metrics successfully exceed the 90% accuracy target, proving the system is
 **Implementation:**
 To demonstrate true end-to-end capabilities, the application has been deployed to the cloud:
 - **Frontend (Vercel):** The HTML/JS client is hosted globally on Vercel, ensuring fast load times and SSL-secured access to the device webcam.
+  - **Live URL:** [https://drowsiness-detection-omega.vercel.app/](https://drowsiness-detection-omega.vercel.app/)
 - **Backend (Railway):** The heavy ML processing and FastAPI server run in a Dockerized environment on Railway, communicating seamlessly with the Vercel frontend via secure WebSockets (`wss://`).
+  - **Live API URL:** [https://drowsiness-detection-production-98d6.up.railway.app/](https://drowsiness-detection-production-98d6.up.railway.app/)
+
+## 6. Project Submission Links
+- **Google Drive Project Folder (Source Code, Demo Video & Report):** [https://drive.google.com/drive/folders/1wxBx_gn_X-MOUlmefHjdpQLtRjbdpJYk?usp=sharing](https://drive.google.com/drive/folders/1wxBx_gn_X-MOUlmefHjdpQLtRjbdpJYk?usp=sharing)
+- **GitHub Repository (Updated Source Code):** [https://github.com/Azeenwaqas/drowsiness-detection.git](https://github.com/Azeenwaqas/drowsiness-detection.git)

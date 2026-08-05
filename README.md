@@ -48,8 +48,10 @@ DrowsyGuard/
 
 ## 🚀 Quick Start
 
-### 🌐 Live Demo
-Try the live production application here: **[https://drowsiness-detection-omega.vercel.app/](https://drowsiness-detection-omega.vercel.app/)**
+### 🌐 Live Demo & Submission Links
+* **Live Frontend Demo (Vercel):** [https://drowsiness-detection-omega.vercel.app/](https://drowsiness-detection-omega.vercel.app/)
+* **Live Backend API (Railway):** [https://drowsiness-detection-production-98d6.up.railway.app/](https://drowsiness-detection-production-98d6.up.railway.app/)
+* **Google Drive Project Folder (ZIP, Report, Video):** [https://drive.google.com/drive/folders/1wxBx_gn_X-MOUlmefHjdpQLtRjbdpJYk?usp=sharing](https://drive.google.com/drive/folders/1wxBx_gn_X-MOUlmefHjdpQLtRjbdpJYk?usp=sharing)
 
 ### 1. Install dependencies
 ```bash
