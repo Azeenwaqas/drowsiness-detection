@@ -74,6 +74,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.image) {
                 // Update the video feed with the processed image from the backend
                 videoFeed.src = response.image;
+                
+                // Ask for the next frame ONLY after we finished rendering this one!
+                if (isMonitoring) {
+                    requestAnimationFrame(sendNextFrame);
+                }
             }
         };
 
@@ -121,19 +126,26 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.ml_label !== undefined) metricMl.innerText = `${data.ml_label} ${Math.round((data.confidence || 0) * 100)}%`;
     }
 
+    function sendNextFrame() {
+        if (isMonitoring && ws && ws.readyState === WebSocket.OPEN && localStream) {
+            ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
+            // Lower quality slightly to improve latency
+            const base64Image = canvas.toDataURL('image/jpeg', 0.5); 
+            ws.send(JSON.stringify({ type: "frame", image: base64Image }));
+        }
+    }
+
     async function startCamera() {
         try {
-            localStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+            localStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 15 } } 
+            });
             hiddenVideo.srcObject = localStream;
             
-            // Start sending frames periodically
-            captureInterval = setInterval(() => {
-                if (isMonitoring && ws && ws.readyState === WebSocket.OPEN) {
-                    ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
-                    const base64Image = canvas.toDataURL('image/jpeg', 0.6); // 60% quality
-                    ws.send(JSON.stringify({ type: "frame", image: base64Image }));
-                }
-            }, 100); // 10 fps
+            // Wait for the video to start playing before sending the first frame
+            hiddenVideo.onplaying = () => {
+                if (isMonitoring) sendNextFrame();
+            };
             
         } catch (err) {
             console.error("Error accessing webcam:", err);
@@ -145,10 +157,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (localStream) {
             localStream.getTracks().forEach(track => track.stop());
             localStream = null;
-        }
-        if (captureInterval) {
-            clearInterval(captureInterval);
-            captureInterval = null;
         }
     }
 
