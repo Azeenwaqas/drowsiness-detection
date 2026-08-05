@@ -329,9 +329,9 @@ class DrowsinessDetector:
                 base_ear        = np.mean(self.calib_ear)
                 base_mar        = np.mean(self.calib_mar)
                 self.base_pitch = np.mean(self.calib_pitch) if self.calib_pitch else 0.0
-                # Sensitive threshold to trigger on half-closed eyes
-                self.ear_thresh = min(0.28, max(0.20, round(base_ear - 0.040, 3)))
-                self.mar_thresh = max(0.55, round(base_mar + 0.22,  3))
+                # Make threshold more sensitive so it detects drowsiness easier
+                self.ear_thresh = min(0.32, max(0.22, round(base_ear - 0.020, 3)))
+                self.mar_thresh = max(0.55, round(base_mar + 0.15,  3))
                 self.calibrated = True
                 print(f"Calibrated -> EAR thresh:{self.ear_thresh}  "
                       f"MAR thresh:{self.mar_thresh}  "
@@ -470,8 +470,11 @@ class DrowsinessDetector:
         ]])
 
         if ml_model:
-            pred_label = ml_model.predict(features)[0]
-            pred_proba = ml_model.predict_proba(features)[0]
+            import warnings
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                pred_label = ml_model.predict(features)[0]
+                pred_proba = ml_model.predict_proba(features)[0]
             confidence = pred_proba[pred_label]
             ml_state = CLASSES[pred_label]
         else:
@@ -568,5 +571,6 @@ class DrowsinessDetector:
             "yawn_count"      : yawn_freq,
             "alert_msg"       : self.alert_msg,
             "alert_count"     : self.alert_count,
-            "session_duration": int(time.time()-self.start_time)
+            "session_duration": int(time.time()-self.start_time),
+            "face_box"        : [x1, y1, x2-x1, y2-y1] if res.multi_face_landmarks else None
         }

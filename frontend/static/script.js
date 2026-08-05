@@ -26,6 +26,45 @@ document.addEventListener('DOMContentLoaded', () => {
         "STOPPED": "⚪"
     };
 
+    // Web Audio API Alarm System
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let alarmInterval = null;
+
+    function playAlarmSound() {
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        // Siren effect
+        oscillator.type = 'square';
+        oscillator.frequency.setValueAtTime(800, audioCtx.currentTime); 
+        oscillator.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.2); 
+        
+        gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.3);
+    }
+
+    function startAlarm() {
+        if (!alarmInterval) {
+            alarmInterval = setInterval(playAlarmSound, 400); 
+        }
+    }
+
+    function stopAlarm() {
+        if (alarmInterval) {
+            clearInterval(alarmInterval);
+            alarmInterval = null;
+        }
+    }
+
     // History tracking
     let sessionHistory = [];
     let previousState = "STOPPED";
@@ -44,69 +83,20 @@ document.addEventListener('DOMContentLoaded', () => {
     hiddenVideo.playsInline = true;
     hiddenVideo.muted = true;
     
-    // --- Audio Engine for Siren ---
-    let audioCtx = null;
-    let sirenOsc = null;
-    let lfoOsc = null;
-    let isSirenPlaying = false;
-    
-    function playSiren() {
-        if (isSirenPlaying) return;
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        
-        isSirenPlaying = true;
-        sirenOsc = audioCtx.createOscillator();
-        lfoOsc = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
-        
-        sirenOsc.type = 'square';
-        sirenOsc.frequency.value = 800; // Base 800 Hz
-        
-        lfoOsc.type = 'square';
-        lfoOsc.frequency.value = 2; // Alternate 2 times a second
-        
-        const lfoGain = audioCtx.createGain();
-        lfoGain.gain.value = 400; // Add 400 Hz (so it alternates 800/1200)
-        
-        lfoOsc.connect(lfoGain);
-        lfoGain.connect(sirenOsc.frequency);
-        
-        sirenOsc.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-        gainNode.gain.value = 0.5; // Volume
-        
-        sirenOsc.start();
-        lfoOsc.start();
-    }
-    
-    function stopSiren() {
-        if (!isSirenPlaying) return;
-        isSirenPlaying = false;
-        try {
-            if (sirenOsc) sirenOsc.stop();
-            if (lfoOsc) lfoOsc.stop();
-        } catch(e) {}
-    }
-    // -----------------------------
-    
     // Create an offscreen canvas to extract frames
     const canvas = document.createElement('canvas');
-    canvas.width = 640;
-    canvas.height = 480;
+    canvas.width = 320;
+    canvas.height = 240;
     const ctx = canvas.getContext('2d');
 
-    // Force connection to local python backend (port 8000) when running locally or via file://
-    const isLocal = window.location.hostname === "localhost" || 
-                    window.location.hostname === "127.0.0.1" || 
-                    window.location.protocol === "file:";
-                    
-    const backendHost = isLocal 
-                        ? "127.0.0.1:8000" 
+    // Make sure to set the correct backend URL when deployed!
+    // In production, change this to your Railway app URL (e.g. wss://your-app.up.railway.app/ws)
+    const backendHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" 
+                        ? `${window.location.host}` 
                         : "drowsiness-detection-production-98d6.up.railway.app";
     
     function connectWebSocket() {
-        const protocol = (window.location.protocol === 'https:' && !isLocal) ? 'wss:' : 'ws:';
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${backendHost}/ws`;
         
         ws = new WebSocket(wsUrl);
@@ -130,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateDashboard(response.data);
             }
             if (response.image) {
-                // Update the video feed with the processed image from the backend
+                // Restore the beautiful OpenCV UI!
                 videoFeed.src = response.image;
                 
                 // Ask for the next frame ONLY after we finished rendering this one!
@@ -159,24 +149,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const icon = icons[state] || '⚪';
         currentState.innerHTML = `${icon} ${state.replace('_', ' ')}`;
 
-        // Update alert message and audio
+        // Update alert message
         const alertMsg = data.alert_msg || '';
         if (state === "VERY_DROWSY") {
             alertBox.className = 'alert alert-danger';
             alertBox.innerHTML = `🚨 ${alertMsg}`;
-            playSiren();
+            startAlarm();
         } else if (["DROWSY", "NO_FACE", "AWAY"].includes(state) && alertMsg) {
             alertBox.className = 'alert alert-warn';
             alertBox.innerHTML = `⚠️ ${alertMsg}`;
-            stopSiren(); // Replace with beep in future if needed
+            if (state === "DROWSY" || state === "AWAY") {
+                startAlarm();
+            } else {
+                stopAlarm();
+            }
         } else if (state === "STOPPED") {
             alertBox.className = 'alert alert-ok';
             alertBox.innerHTML = `ℹ️ System stopped.`;
-            stopSiren();
+            stopAlarm();
         } else {
             alertBox.className = 'alert alert-ok';
             alertBox.innerHTML = `✅ Driver Alert — All Good`;
-            stopSiren();
+            stopAlarm();
         }
 
         // Log state changes to history
@@ -215,8 +209,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function startCamera() {
         try {
+            // Request High-Definition (HD) 720p video at 30 FPS for much better quality
             localStream = await navigator.mediaDevices.getUserMedia({ 
-                video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 15 } } 
+                video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } } 
             });
             hiddenVideo.srcObject = localStream;
             
@@ -239,6 +234,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     btnStart.addEventListener('click', () => {
+        // CRITICAL FIX: Modern browsers block audio unless it's started by a user gesture.
+        // We must resume the AudioContext right when the user clicks 'Start Monitoring'!
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'start' }));
         }

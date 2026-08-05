@@ -122,12 +122,11 @@ async def websocket_endpoint(websocket: WebSocket):
                             print("DB Error:", db_e)
                         websocket.previous_state = current_state
                     
-                    # Encode output frame back to base64
-                    ret, buffer = cv2.imencode('.jpg', out_frame)
+                    # We must send the image back so the frontend can display the beautiful OpenCV UI overlays!
+                    ret, buffer = cv2.imencode('.jpg', out_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 40])
                     if ret:
                         out_b64 = "data:image/jpeg;base64," + base64.b64encode(buffer).decode('utf-8')
                         
-                        # Send back processed frame and data
                         await websocket.send_json({
                             "image": out_b64,
                             "data": data
