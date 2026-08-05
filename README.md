@@ -54,17 +54,20 @@ DrowsyGuard/
 
 ## 🚀 Quick Start
 
+### 🌐 Live Demo
+Try the live production application here: **[https://drowsiness-detection-omega.vercel.app/](https://drowsiness-detection-omega.vercel.app/)**
+
 ### 1. Install dependencies
 ```bash
-pip install mediapipe==0.10.9
+pip install mediapipe==0.10.11
 pip install -r requirements.txt
 ```
 
 ### 2. Run Web Interface (FastAPI Server)
 ```bash
-python main.py
+python backend/main.py
 ```
-*Then open your browser to `http://127.0.0.1:8000`*
+*Then open your browser to the local URL provided by Uvicorn.*
 
 ### 3. Run Jupyter Notebook (ML Pipeline)
 ```bash

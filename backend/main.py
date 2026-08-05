@@ -11,7 +11,22 @@ import uvicorn
 import numpy as np
 from contextlib import asynccontextmanager
 from detector import DrowsinessDetector
+import sqlite3
+import datetime
 from fastapi.middleware.cors import CORSMiddleware
+
+# Initialize SQLite Database for persistent history logging
+conn = sqlite3.connect("drowsyguard.db", check_same_thread=False)
+cursor = conn.cursor()
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS session_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TEXT,
+        state TEXT,
+        message TEXT
+    )
+''')
+conn.commit()
 
 cap = None
 det = DrowsinessDetector()
@@ -67,6 +82,8 @@ async def websocket_endpoint(websocket: WebSocket):
             elif msg.get("type") == "stop":
                 is_running = False
                 det._sound("ALERT") # Stop alarm
+                if hasattr(websocket, 'previous_state'):
+                    delattr(websocket, 'previous_state')
                 await websocket.send_json({
                     "data": {
                         "state": "STOPPED",
@@ -88,7 +105,22 @@ async def websocket_endpoint(websocket: WebSocket):
                 
                 if img is not None:
                     # Process frame
+                    t0 = time.time()
                     out_frame, data = det.process_frame(img)
+                    t1 = time.time()
+                    # print(f"Frame processing took: {(t1-t0)*1000:.1f} ms")
+                    
+                    # SQLite Persistent Logging for state changes
+                    current_state = data.get('state', 'ALERT')
+                    prev_state = getattr(websocket, 'previous_state', 'STOPPED')
+                    if current_state != prev_state and current_state != 'STOPPED' and current_state != 'CALIBRATING':
+                        try:
+                            cursor.execute("INSERT INTO session_history (timestamp, state, message) VALUES (?, ?, ?)",
+                                           (datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), current_state, data.get('alert_msg', '')))
+                            conn.commit()
+                        except Exception as db_e:
+                            print("DB Error:", db_e)
+                        websocket.previous_state = current_state
                     
                     # Encode output frame back to base64
                     ret, buffer = cv2.imencode('.jpg', out_frame)
